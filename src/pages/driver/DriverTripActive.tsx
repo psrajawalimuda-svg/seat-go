@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useDriver } from "@/context/DriverContext";
-import { usePickupPoints } from "@/hooks/use-supabase-data";
+import { usePickupPoints, useTrips } from "@/hooks/use-supabase-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -105,6 +105,7 @@ const DriverTripActive = () => {
   } = useDriver();
   
   const { data: allPickupPoints = [], isLoading: isLoadingPoints } = usePickupPoints();
+  const { completeTrip } = useTrips();
   const [viewMode, setViewMode] = useState<"list" | "map">("map"); // Default to map for merger
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [showPassengerCheck, setShowPassengerCheck] = useState(false);
@@ -205,9 +206,21 @@ const DriverTripActive = () => {
     setShowPassengerCheck(true);
   };
 
-  const handleFinishPassengerCheck = () => {
+  const handleFinishPassengerCheck = async () => {
     setShowPassengerCheck(false);
     if (isLastStop) {
+      if (activeTrip?.id) {
+        try {
+          await completeTrip.mutateAsync(activeTrip.id);
+          toast({
+            title: "Mission Successful",
+            description: "Trip record has been updated with actual completion date.",
+            variant: "default"
+          });
+        } catch (err) {
+          console.error("Failed to complete trip:", err);
+        }
+      }
       navigate("/driver");
       return;
     }

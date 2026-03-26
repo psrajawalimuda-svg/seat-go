@@ -4,7 +4,8 @@ import {
   Clock, Calendar, Search, Filter, Download, 
   FileText, List, LayoutGrid, Bus, User, 
   AlertCircle, CheckCircle2, Flag, ChevronRight,
-  MoreVertical, ArrowUpRight, Activity, X
+  MoreVertical, ArrowUpRight, Activity, X, CalendarDays,
+  Calendar as CalendarIcon
 } from "lucide-react";
 import { formatPrice, VEHICLE_LAYOUTS } from "@/data/shuttle-data";
 import { useTrips, useDrivers, usePickupPoints, toTrip, DbTrip } from "@/hooks/use-supabase-data";
@@ -21,7 +22,11 @@ import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
+import { format, isBefore, startOfDay, parseISO, isWithinInterval, endOfDay } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as DayPickerCalendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
 
 // --- Leaflet Icon Fix ---
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -65,11 +70,21 @@ export default function TripsManagement() {
   const [viewMode, setViewMode] = useState<"table" | "monitor">("table");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<DbTrip | null>(null);
-  const [form, setForm] = useState({ route_name: "", departure_time: "", base_price: "", total_seats: "10", driver_id: "", vehicle_type: "hiace" });
+  const [form, setForm] = useState({ 
+    route_name: "", 
+    departure_time: "", 
+    base_price: "", 
+    total_seats: "10", 
+    driver_id: "", 
+    vehicle_type: "hiace",
+    departure_date: format(new Date(), "yyyy-MM-dd"),
+    estimated_completion: format(new Date(), "yyyy-MM-dd")
+  });
 
   // Filtering Logic
   const filteredTrips = useMemo(() => {
@@ -84,9 +99,17 @@ export default function TripsManagement() {
                            (statusFilter === 'active' && isActive) ||
                            (statusFilter === 'scheduled' && !isActive);
       
-      return matchesSearch && matchesStatus;
+      let matchesDate = true;
+      if (dateRange?.from && t.departure_date) {
+        const from = startOfDay(dateRange.from);
+        const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+        const tripDate = parseISO(t.departure_date);
+        matchesDate = isWithinInterval(tripDate, { start: from, end: to });
+      }
+      
+      return matchesSearch && matchesStatus && matchesDate;
     });
-  }, [dbTrips, searchQuery, statusFilter, drivers]);
+  }, [dbTrips, searchQuery, statusFilter, dateRange, drivers]);
 
   const activeTrip = useMemo(() => 
     selectedTripId ? filteredTrips.find(t => t.id === selectedTripId) : null
@@ -98,7 +121,16 @@ export default function TripsManagement() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ route_name: "", departure_time: "", base_price: "", total_seats: "10", driver_id: "", vehicle_type: "hiace" });
+    setForm({ 
+      route_name: "", 
+      departure_time: "", 
+      base_price: "", 
+      total_seats: "10", 
+      driver_id: "", 
+      vehicle_type: "hiace",
+      departure_date: format(new Date(), "yyyy-MM-dd"),
+      estimated_completion: format(new Date(), "yyyy-MM-dd")
+    });
     setDialogOpen(true);
   };
 
@@ -111,12 +143,33 @@ export default function TripsManagement() {
       total_seats: String(t.total_seats),
       driver_id: t.driver_id || "",
       vehicle_type: t.vehicle_type || "hiace",
+      departure_date: t.departure_date ? format(parseISO(t.departure_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      estimated_completion: t.estimated_completion ? format(parseISO(t.estimated_completion), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")
     });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.route_name || !form.departure_time) return;
+    if (!form.route_name || !form.departure_time || !form.departure_date || !form.estimated_completion) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    // Date Validation
+    const today = startOfDay(new Date());
+    const depDate = startOfDay(new Date(form.departure_date));
+    const estDate = startOfDay(new Date(form.estimated_completion));
+
+    if (isBefore(depDate, today)) {
+      toast.error("Departure date cannot be in the past");
+      return;
+    }
+
+    if (isBefore(estDate, depDate)) {
+      toast.error("Estimated completion date cannot be before departure date");
+      return;
+    }
+
     try {
       const payload: any = {
         route_name: form.route_name,
@@ -125,13 +178,16 @@ export default function TripsManagement() {
         total_seats: Number(form.total_seats),
         driver_id: form.driver_id || null,
         vehicle_type: form.vehicle_type,
+        departure_date: new Date(form.departure_date).toISOString(),
+        estimated_completion: new Date(form.estimated_completion).toISOString()
       };
       if (editing) payload.id = editing.id;
       await upsert.mutateAsync(payload);
       setDialogOpen(false);
       toast.success(editing ? "Trip updated" : "Trip added");
-    } catch {
-      toast.error("Failed to save");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save mission");
     }
   };
 
@@ -171,8 +227,8 @@ export default function TripsManagement() {
       </div>
 
       {/* Stats & Search */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="md:col-span-3 relative">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+        <div className="md:col-span-5 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-30" />
           <Input 
             placeholder="Search by route, driver, or vehicle plate..." 
@@ -181,16 +237,64 @@ export default function TripsManagement() {
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-14 rounded-2xl border-2 font-black uppercase text-xs">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="font-bold uppercase text-[10px]">All Missions</SelectItem>
-            <SelectItem value="active" className="font-bold uppercase text-[10px]">Active Now</SelectItem>
-            <SelectItem value="scheduled" className="font-bold uppercase text-[10px]">Scheduled</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="md:col-span-4 flex gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="outline" 
+                className={cn(
+                  "h-14 rounded-2xl border-2 font-bold flex-1 justify-start px-4",
+                  !dateRange && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      {format(dateRange.from, "dd/MM/yy")} - {format(dateRange.to, "dd/MM/yy")}
+                    </>
+                  ) : (
+                    format(dateRange.from, "dd/MM/yy")
+                  )
+                ) : (
+                  <span>Mission Dates</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <DayPickerCalendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+          {dateRange && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-14 w-14 rounded-2xl border-2"
+              onClick={() => setDateRange(undefined)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+        <div className="md:col-span-3">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-14 rounded-2xl border-2 font-black uppercase text-xs">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="font-bold uppercase text-[10px]">All Missions</SelectItem>
+              <SelectItem value="active" className="font-bold uppercase text-[10px]">Active Now</SelectItem>
+              <SelectItem value="scheduled" className="font-bold uppercase text-[10px]">Scheduled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {viewMode === "table" ? (
@@ -201,6 +305,7 @@ export default function TripsManagement() {
                 <TableRow>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest px-6">Route & Mission</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Departure</TableHead>
+                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Est. Finish</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Seats</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Driver / Plate</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest text-right px-6">Actions</TableHead>
@@ -231,10 +336,28 @@ export default function TripsManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2 font-black text-sm">
-                          <Clock className="h-3.5 w-3.5 opacity-50" />
-                          {trip.departureTime}
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 font-black text-sm">
+                            <Clock className="h-3.5 w-3.5 opacity-50" />
+                            {trip.departureTime}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold opacity-50">
+                            <CalendarDays className="h-3 w-3" />
+                            {trip.departureDate ? formatDate(trip.departureDate, "dd/MM/yyyy") : "--/--/----"}
+                          </div>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5 text-xs font-black">
+                          <Flag className="h-3.5 w-3.5 opacity-50" />
+                          {trip.estimatedCompletion ? formatDate(trip.estimatedCompletion, "dd/MM/yyyy") : "--/--/----"}
+                        </div>
+                        {trip.actualCompletion && (
+                          <div className="flex items-center gap-1 mt-1 text-[9px] font-black text-green-600 uppercase">
+                            <CheckCircle2 className="h-2.5 w-2.5" />
+                            Done: {formatDate(trip.actualCompletion, "dd/MM/yyyy")}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
@@ -504,6 +627,16 @@ export default function TripsManagement() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest">Base Price (IDR)</Label>
                 <Input type="number" className="font-black" value={form.base_price} onChange={e => setForm(f => ({ ...f, base_price: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest">Departure Date</Label>
+                <Input type="date" className="font-black" value={form.departure_date} onChange={e => setForm(f => ({ ...f, departure_date: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest">Est. Finish Date</Label>
+                <Input type="date" className="font-black" value={form.estimated_completion} onChange={e => setForm(f => ({ ...f, estimated_completion: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-2">

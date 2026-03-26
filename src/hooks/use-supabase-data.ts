@@ -29,6 +29,9 @@ export interface DbTrip {
   booked_seats: number[];
   driver_id: string | null;
   vehicle_type: string;
+  departure_date: string | null;
+  estimated_completion: string | null;
+  actual_completion: string | null;
   created_at: string;
   // joined
   driver?: DbDriver | null;
@@ -103,6 +106,9 @@ export function toTrip(t: DbTrip) {
     driverName: t.driver?.name || "",
     driverPhone: t.driver?.phone || "",
     vehiclePlate: t.driver?.plate || "",
+    departureDate: t.departure_date,
+    estimatedCompletion: t.estimated_completion,
+    actualCompletion: t.actual_completion,
   };
 }
 
@@ -195,7 +201,18 @@ export function useTrips() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["trips"] }),
   });
 
-  return { ...query, upsert, updateSeats };
+  const completeTrip = useMutation({
+    mutationFn: async (tripId: string) => {
+      const { error } = await supabase
+        .from("trips")
+        .update({ actual_completion: new Date().toISOString() } as any)
+        .eq("id", tripId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trips"] }),
+  });
+
+  return { ...query, upsert, updateSeats, completeTrip };
 }
 
 export function useBookings() {

@@ -20,9 +20,10 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger 
 } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { formatPrice } from "@/data/shuttle-data";
 import { motion, AnimatePresence } from "framer-motion";
+import { format, parseISO } from "date-fns";
 
 export default function DriverTripDetail() {
   const { id } = useParams<{ id: string }>();
@@ -187,15 +188,15 @@ export default function DriverTripDetail() {
             <CardContent className="p-8 grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                  <Calendar className="w-3 h-3" /> Date
+                  <Calendar className="w-3 h-3" /> Dep. Date
                 </p>
-                <p className="font-bold">Today</p>
+                <p className="font-bold">{trip.departureDate ? formatDate(trip.departureDate, "dd/MM/yyyy") : "TBA"}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Duration
+                  <Clock className="w-3 h-3" /> Est. Finish
                 </p>
-                <p className="font-bold">~2.5 Hours</p>
+                <p className="font-bold">{trip.estimatedCompletion ? formatDate(trip.estimatedCompletion, "dd/MM/yyyy") : "TBA"}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
@@ -210,6 +211,13 @@ export default function DriverTripDetail() {
                 <p className="font-bold">{trip.vehiclePlate}</p>
               </div>
             </CardContent>
+            {trip.actualCompletion && (
+              <div className="px-8 pb-8 -mt-4">
+                <Badge className="bg-green-500/10 text-green-600 border-green-200 font-black uppercase text-[9px] tracking-widest gap-1.5 py-1">
+                  <CheckCircle className="w-3 h-3" /> Completed on {formatDate(trip.actualCompletion, "dd/MM/yyyy HH:mm")}
+                </Badge>
+              </div>
+            )}
           </Card>
 
           {/* Passenger Manifest */}
