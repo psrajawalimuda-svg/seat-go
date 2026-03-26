@@ -1,77 +1,44 @@
 
 
-# Accurate Seat Layouts by Vehicle Type
+# Enhanced E-Ticket Page
 
 ## Overview
-Replace the current generic grid-based seat layout with vehicle-type-specific layouts that match real shuttle configurations. Each trip will have a `vehicle_type` field that determines the exact seat arrangement shown on the seat selection screen.
+Improve the E-Ticket page with a proper QR code, richer trip details, share/download functionality, and polished mobile UI.
 
-## Vehicle Types & Layouts
+## Changes
 
-```text
-MINIBUS (3 seats):
-┌─────────────────┐
-│ [1]     [DRIVER] │  Row 1
-│ [2]  [3]         │  Row 2
-│ ═══ BAGGAGE ═══  │  Row 3
-└─────────────────┘
+### 1. Install QR Code Library
+Add `qrcode.react` to generate a real QR code from booking data instead of the current random pixel grid.
 
-MINIBUS_ROOF (5 seats):
-┌─────────────────┐
-│ [1]     [DRIVER] │  Row 1
-│ [2]  [3]         │  Row 2
-│ [4]  [5]         │  Row 3
-│ ══ BAGGAGE ROOF ══│
-└─────────────────┘
+### 2. Rebuild `src/pages/ETicket.tsx`
 
-HIACE (10 seats):
-┌─────────────────┐
-│ [1]     [DRIVER] │  Row 1
-│ [2] [3] [4]      │  Row 2
-│ [5] [6] [7]      │  Row 3
-│ [8] [9] [10]     │  Row 4
-│ ═══ BAGGAGE ═══  │
-└─────────────────┘
-```
+**QR Code**: Generate a deterministic QR code encoding a JSON payload with `bookingId`, `tripId`, `seatNumber`, and `date`. Displayed in a styled container with the "Show this QR to the driver" label.
 
-## Database Changes
+**Trip Details Card**: Expand the info section to include:
+- Route name with vehicle type badge
+- Date of travel
+- Pickup point (label + name)
+- Pickup time
+- Seat number
+- Passenger name (from booking context — currently not stored, will show date instead)
+- "Paid" status badge (already exists, keep)
 
-**Migration**: Add `vehicle_type` column to `trips` table:
-```sql
-ALTER TABLE trips ADD COLUMN vehicle_type text NOT NULL DEFAULT 'hiace';
-```
+**Share/Download Buttons**: Add two action buttons below the ticket card:
+- **Share** — uses `navigator.share()` Web Share API (with fallback to clipboard copy) to share ticket details as text
+- **Download** — uses `html2canvas` or a simpler approach: generate a text summary and trigger download as a `.txt` file (no heavy dependency). Alternative: use `window.print()` targeting the ticket card for PDF-like output.
 
-Valid values: `minibus`, `minibus_roof`, `hiace`
+**UI Polish**:
+- Ticket-style card with tear-line divider (keep existing dashed border + circle cutouts)
+- Booking reference ID displayed at top of card (use a short hash of trip+seat+date)
+- Subtle entrance animations (already present, refine timing)
 
-**Update existing trips** to set appropriate vehicle types and correct `total_seats` values.
-
-## Code Changes
-
-### 1. Define Seat Layout Config (`src/data/shuttle-data.ts`)
-Add a `VEHICLE_LAYOUTS` constant mapping each vehicle type to its row structure:
-- Each row is an array of cell types: `"seat"`, `"driver"`, `"empty"`, `"baggage"`, `"baggage_roof"`
-- Includes `totalSeats`, `label` (display name), and `rows` definition
-
-### 2. Update `SeatSelection.tsx`
-- Import vehicle layout config
-- Read `vehicle_type` from the trip (via `toTrip`)
-- Replace the generic `cols/rows` grid with layout-driven rendering
-- Render driver cell with steering wheel icon in row 1
-- Render baggage row at the bottom with a luggage icon/label
-- Each seat cell uses the existing `SeatIcon` component
-
-### 3. Update `use-supabase-data.ts`
-- Add `vehicle_type` to `DbTrip` interface
-- Pass `vehicleType` through in `toTrip()` converter
-
-### 4. Update `TripsManagement.tsx` (Admin)
-- Add vehicle type selector (Select dropdown) in the add/edit trip dialog
-- Options: Mini Bus (3 seats), Mini Bus + Roof Rack (5 seats), HiAce (10 seats)
-- Auto-set `total_seats` when vehicle type changes
-- Show vehicle type column in the trips table
+### 3. Add Booking Reference
+Generate a short booking reference code (e.g., `SG-XXXX`) from the booking data for display on the ticket. This is purely cosmetic — derived from a hash of tripId + seatNumber.
 
 ## Technical Details
-- `vehicle_type` defaults to `hiace` so existing trips continue working
-- The seat numbering follows the exact order from the reference layouts
-- Baggage rows are non-interactive visual elements
-- Driver cell is a fixed non-interactive element with an icon
+- Install: `qrcode.react`
+- Modified file: `src/pages/ETicket.tsx`
+- No database changes needed
+- Share API has graceful fallback for unsupported browsers
+- Download uses `window.print()` with a print-specific CSS media query for clean output
 
