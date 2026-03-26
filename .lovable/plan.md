@@ -1,93 +1,49 @@
 
 
-# Driver Authentication with Login & Signup
+# Implement Real-Time Map
 
 ## Overview
-Add authentication for drivers so they can log in with email/password, have their identity linked to the `drivers` table, and access only their own data. Replace the current `localStorage`-based driver identity with real auth.
+The app already has real-time GPS infrastructure (driver broadcasts location via `useTripTracking`, passenger tracks via `DriverTracking.tsx` with Supabase Realtime). The main gap is: **the Admin Dashboard has no live map**, and the **driver's trip detail page has no map showing all active drivers**. This plan adds a real-time map to the Admin Dashboard showing all active drivers on a single map, and ensures the existing passenger tracking map works end-to-end.
 
-## Step 1 — Database Migration
+## Changes
 
-Create a `profiles` table and link drivers to auth users:
+### 1. Admin Real-Time Fleet Map (`src/pages/admin/Dashboard.tsx`)
 
-```sql
--- Profiles table for all authenticated users
-CREATE TABLE public.profiles (
-  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  full_name text,
-  phone text,
-  role text NOT NULL DEFAULT 'passenger',
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+Add a Leaflet map card to the admin dashboard that:
+- Subscribes to `driver_locations` table via Supabase Realtime (all rows, not filtered by trip)
+- Shows all active driver positions as bus markers on a single map
+- Displays driver name, speed, current route in marker popups
+- Auto-updates as drivers broadcast their GPS
+- Shows pickup points as small dots for route context
+- Includes driver count badge and "last updated" timestamp
 
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+### 2. Create `src/components/admin/FleetMap.tsx`
 
-CREATE POLICY "Users can read own profile" ON public.profiles
-  FOR SELECT TO authenticated USING (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON public.profiles
-  FOR UPDATE TO authenticated USING (auth.uid() = id);
-CREATE POLICY "Auto-insert profile" ON public.profiles
-  FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
+New component containing:
+- `MapContainer` with all driver markers from `driver_locations`
+- Realtime subscription to `driver_locations` table (all changes)
+- Join driver info (name, plate) from the `useDrivers()` hook
+- Color-coded markers: green = on-time, red = delayed, gray = stale (>30s)
+- Route polyline from pickup points
+- Responsive height: 400px on desktop
 
--- Trigger to auto-create profile on signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
-AS $$
-BEGIN
-  INSERT INTO public.profiles (id, full_name)
-  VALUES (NEW.id, NEW.raw_user_meta_data ->> 'full_name');
-  RETURN NEW;
-END;
-$$;
+### 3. Ensure Driver GPS Broadcasting Works
 
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+The `useTripTracking` hook already broadcasts to `driver_locations` via upsert. Verify it works with UUID trip IDs (the `trip_id` column is `text` type, so UUIDs work fine as strings).
 
--- Add user_id column to drivers table to link driver to auth user
-ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id);
-```
+### 4. Enable Realtime for Reviews Table (Minor)
 
-## Step 2 — Create Driver Login Page (`src/pages/driver/DriverLogin.tsx`)
+Add `ALTER PUBLICATION supabase_realtime ADD TABLE public.reviews;` — the reviews table was created after the initial realtime setup, so it's not currently in the publication. This is a minor addition but ensures consistency.
 
-- Email + password login form
-- Signup form with name, phone, email, password
-- On signup: create auth user, then link to existing driver record (by phone match) or show "not registered as driver" message
-- Redirect to `/driver` on success
-- Mobile-optimized UI matching existing driver app style
-
-## Step 3 — Update AuthContext (`src/context/AuthContext.tsx`)
-
-- Wire `fetchProfile()` to actually query the `profiles` table
-- Expose `profile.role` so driver pages can check role
-
-## Step 4 — Create ProtectedDriverRoute Component
-
-- Wrapper component that checks `useAuth()` for logged-in user
-- If not logged in → redirect to `/driver/login`
-- Used on all `/driver/*` routes
-
-## Step 5 — Update Driver Pages
-
-- **DriverHome.tsx**: Replace `localStorage` driver ID with `auth.uid()` → query `drivers` where `user_id = auth.uid()`
-- **DriverProfile.tsx**: Show real profile data, add logout button that calls `signOut()`
-- **DriverTripDetail.tsx**: Remove hardcoded driver fallback, use auth-linked driver
-
-## Step 6 — Update App.tsx Routes
-
-- Add `/driver/login` route
-- Wrap all `/driver/*` routes (except login) with the protected route component
-- Add `AuthProvider` wrapper
-
-## Files Modified
-- **New**: `src/pages/driver/DriverLogin.tsx`, `src/components/driver/ProtectedDriverRoute.tsx`
-- **Modified**: `src/context/AuthContext.tsx`, `src/App.tsx`, `src/pages/driver/DriverHome.tsx`, `src/pages/driver/DriverProfile.tsx`, `src/pages/driver/DriverTripDetail.tsx`
-- **Migration**: 1 new migration (profiles table + drivers.user_id column)
+## Files
+- **New**: `src/components/admin/FleetMap.tsx`
+- **Modified**: `src/pages/admin/Dashboard.tsx` (add FleetMap card)
+- **Migration**: Enable realtime on reviews table
 
 ## Technical Details
-- Email confirmation is required by default (no auto-confirm)
-- Driver signup links to existing `drivers` record by matching phone number
-- `localStorage` driver ID pattern is fully replaced by auth
-- No changes to passenger/public routes — they remain unauthenticated for now
+- Uses existing `driver_locations` table and its realtime publication
+- No new dependencies (Leaflet already installed)
+- Fleet map fetches initial positions via SELECT, then listens for realtime updates
+- Stale detection: markers older than 30s show reduced opacity
+- Admin map is read-only (no GPS broadcasting)
 
