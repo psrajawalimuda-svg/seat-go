@@ -29,21 +29,16 @@ const pickupIcon = L.divIcon({
   iconAnchor: [16, 16],
 });
 
-// Simulated route coords (Bandung area)
-const ROUTE_COORDS: [number, number][] = [
-  [-6.9175, 107.6091],
-  [-6.9180, 107.6120],
-  [-6.9185, 107.6150],
-  [-6.9190, 107.6180],
-  [-6.9192, 107.6210],
-  [-6.9195, 107.6240],
-  [-6.9198, 107.6270],
-  [-6.9200, 107.6300],
-  [-6.9203, 107.6330],
-  [-6.9205, 107.6360],
-];
+// Route coords derived from all pickup points
+const ROUTE_COORDS = PICKUP_POINTS.map((p) => p.coords);
 
-const PICKUP_COORD: [number, number] = [-6.9205, 107.6360];
+const makeStopIcon = (label: string, isSelected: boolean) =>
+  L.divIcon({
+    className: "",
+    html: `<div style="width:${isSelected ? 28 : 22}px;height:${isSelected ? 28 : 22}px;border-radius:50%;background:${isSelected ? "linear-gradient(135deg,hsl(152,69%,45%),hsl(152,69%,55%))" : "white"};border:2px solid ${isSelected ? "hsl(152,69%,40%)" : "hsl(217,91%,50%)"};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:${isSelected ? 10 : 8}px;font-weight:700;color:${isSelected ? "white" : "hsl(217,91%,50%)"};font-family:sans-serif">${label}</div>`,
+    iconSize: [isSelected ? 28 : 22, isSelected ? 28 : 22],
+    iconAnchor: [isSelected ? 14 : 11, isSelected ? 14 : 11],
+  });
 
 function AnimatedBusMarker({ progress }: { progress: number }) {
   const map = useMap();
