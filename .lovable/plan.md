@@ -1,55 +1,88 @@
 
 
-# Admin Dashboard for ShuttleGo
+# Driver Mobile App UI/UX
 
 ## Overview
-Build a comprehensive admin dashboard with sidebar navigation to manage drivers, trips, bookings, pickup points, and view analytics. The dashboard will use mock data (same pattern as existing app) and be accessible via `/admin` routes.
+Build a full mobile-first driver app accessible at `/driver/*` routes. This is the companion app for drivers — optimized for handheld use while driving/operating shuttles.
 
-## New Files to Create
+## Screens
 
-### 1. Admin Data & Types (`src/data/admin-data.ts`)
-- `Driver` interface (id, name, phone, plate, status, photo, rating, totalTrips)
-- `BookingRecord` interface extending existing Booking with passenger info and status
-- Mock arrays: `MOCK_DRIVERS`, `MOCK_BOOKINGS`
-- Stats helper functions
+### 1. Driver Home (`/driver`) — `src/pages/driver/DriverHome.tsx`
+- **Greeting header** with driver name, avatar, and status toggle (Online/Offline)
+- **Today's summary cards**: total trips, passengers, earnings
+- **Active trip card** (if on-trip): route name, departure time, next pickup point, tap to navigate
+- **Upcoming trips list**: card-based, showing route, time, booked passengers count
+- **Bottom tab navigation**: Home, Trips, Passengers, Profile
 
-### 2. Admin Layout (`src/components/admin/AdminLayout.tsx`)
-- Sidebar using Shadcn Sidebar component with sections: Dashboard, Drivers, Trips, Bookings, Pickup Points
-- Header with admin title and sidebar trigger
-- Responsive layout with collapsible sidebar
+### 2. Trip Detail (`/driver/trip/:id`) — `src/pages/driver/DriverTripDetail.tsx`
+- **Route info header**: route name, departure time, vehicle plate
+- **Pickup points timeline**: vertical stepper showing all J1-J17 stops with:
+  - Stop label & name
+  - Estimated time
+  - Number of passengers boarding at each stop
+  - Status indicator (upcoming / current / completed)
+- **Passenger list** per stop: name, seat number, phone (tap to call)
+- **"Start Trip" / "Arrive at Stop" / "Complete Trip"** action button at bottom
+- **Interactive map** showing the route with current position
 
-### 3. Admin Pages
-- **`src/pages/admin/Dashboard.tsx`** — Overview with stat cards (total bookings, revenue, active drivers, trips today), recent bookings table, quick charts
-- **`src/pages/admin/DriversManagement.tsx`** — Driver list table with status badges, add/edit driver dialog, toggle active/inactive
-- **`src/pages/admin/TripsManagement.tsx`** — Trips table showing route, time, seats, driver assignment; add/edit trip dialog
-- **`src/pages/admin/BookingsManagement.tsx`** — All bookings table with filters, status management (paid/cancelled/completed)
-- **`src/pages/admin/PickupPointsManagement.tsx`** — List of J1-J17 points, edit names/times, reorder
+### 3. My Trips (`/driver/trips`) — `src/pages/driver/DriverTrips.tsx`
+- **Tab navigation**: Today, Upcoming, History
+- **Trip cards**: route, time, passenger count, earnings, status badge
+- Tap to open trip detail
 
-### 4. Shared Admin Components
-- `src/components/admin/StatCard.tsx` — Reusable metric card with icon, value, label, trend
-- `src/components/admin/AdminSidebar.tsx` — Sidebar navigation component
+### 4. Passenger Manifest (`/driver/passengers`) — `src/pages/driver/DriverPassengers.tsx`
+- **Grouped by trip**: collapsible sections
+- Each passenger: name, pickup point, seat number, status (boarded/waiting/no-show)
+- Quick actions: call, mark as boarded
 
-## Routes (in App.tsx)
-Add nested admin routes:
-```
-/admin → Dashboard
-/admin/drivers → DriversManagement
-/admin/trips → TripsManagement  
-/admin/bookings → BookingsManagement
-/admin/pickup-points → PickupPointsManagement
-```
+### 5. Driver Profile (`/driver/profile`) — `src/pages/driver/DriverProfile.tsx`
+- **Profile card**: name, photo placeholder, phone, vehicle plate
+- **Stats**: rating, total trips, this month earnings
+- **Settings**: notifications toggle, language
+- **Logout button**
 
-## Design
-- Desktop-optimized layout (sidebar + content area)
-- Consistent with app's blue primary color scheme
-- Uses existing Shadcn components: Table, Card, Dialog, Badge, Button, Tabs
-- Stat cards with icons and trend indicators
-- Tables with search/filter capabilities
+## Shared Components
+
+### `src/components/driver/DriverBottomNav.tsx`
+- Fixed bottom tab bar with 4 tabs: Home, Trips, Passengers, Profile
+- Icons + labels, active state highlight with primary color
+
+### `src/components/driver/TripCard.tsx`
+- Reusable card showing trip summary (route, time, seats, status)
+
+### `src/components/driver/PickupTimeline.tsx`
+- Vertical timeline component for pickup point progression
 
 ## Technical Details
-- All data is mock/local state (no backend) — consistent with current app pattern
-- CRUD operations update local state via `useState`
-- Add/Edit forms use Shadcn Dialog with form inputs
-- Driver management includes: name, phone, vehicle plate, status toggle
-- No authentication gate (can be added later with Lovable Cloud)
+- All screens use `mobile-container` (max-w-md mx-auto) like existing passenger app
+- Uses existing design tokens (shuttle-card, shuttle-gradient, tap-highlight)
+- Mock data from existing `MOCK_TRIPS`, `MOCK_DRIVERS`, `MOCK_BOOKINGS`
+- Simulates a logged-in driver (hardcoded as "Pak Ahmad" / driver d1)
+- Framer Motion for page transitions and microinteractions
+- Leaflet map on trip detail for route visualization
+- Routes added under `/driver/*` in App.tsx
+
+## File Structure
+```text
+src/
+├── components/driver/
+│   ├── DriverBottomNav.tsx
+│   ├── TripCard.tsx
+│   └── PickupTimeline.tsx
+├── pages/driver/
+│   ├── DriverHome.tsx
+│   ├── DriverTripDetail.tsx
+│   ├── DriverTrips.tsx
+│   ├── DriverPassengers.tsx
+│   └── DriverProfile.tsx
+```
+
+## Routes (App.tsx)
+```
+/driver         → DriverHome
+/driver/trip/:id → DriverTripDetail
+/driver/trips   → DriverTrips
+/driver/passengers → DriverPassengers
+/driver/profile → DriverProfile
+```
 
