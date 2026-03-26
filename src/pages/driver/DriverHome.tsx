@@ -41,12 +41,20 @@ export default function DriverHome() {
     battery: false,
   });
 
-  const currentDriver = drivers?.[0];
+  // Use localStorage-based driver selection until auth is implemented
+  const savedDriverId = typeof window !== "undefined" ? localStorage.getItem("shuttle_driver_id") : null;
+  const currentDriver = drivers?.find(d => d.id === savedDriverId) || drivers?.[0];
+
+  // Persist selection
+  if (currentDriver && !savedDriverId) {
+    localStorage.setItem("shuttle_driver_id", currentDriver.id);
+  }
+
   const allTripsConverted = useMemo(() => (dbTrips || []).map(toTrip), [dbTrips]);
 
   // Filter trips for this driver
   const driverTrips = useMemo(() => 
-    currentDriver ? allTripsConverted.filter((t) => t.driverName === currentDriver.name) : [],
+    currentDriver ? allTripsConverted.filter((t) => t.driverId === currentDriver.id) : [],
     [currentDriver, allTripsConverted]
   );
 

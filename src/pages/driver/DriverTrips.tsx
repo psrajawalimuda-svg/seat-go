@@ -13,6 +13,7 @@ export default function DriverTrips() {
   const { data: dbTrips, isLoading } = useTrips();
 
   const allTrips = (dbTrips || []).map(toTrip);
+  const todayDate = new Date().toISOString().split("T")[0];
 
   const getStatus = (tab: string) => {
     if (tab === "Riwayat") return "completed" as const;
@@ -20,12 +21,12 @@ export default function DriverTrips() {
     return "upcoming" as const;
   };
 
-  const trips =
-    activeTab === "Riwayat"
-      ? allTrips.slice(-2)
-      : activeTab === "Akan Datang"
-      ? allTrips.slice(2, 4)
-      : allTrips;
+  const trips = allTrips.filter((t) => {
+    if (activeTab === "Riwayat") return t.actualCompletion != null;
+    if (activeTab === "Akan Datang") return !t.actualCompletion && (t.departureDate?.split("T")[0] || "") > todayDate;
+    // Hari Ini
+    return !t.actualCompletion && t.departureDate?.split("T")[0] === todayDate;
+  });
 
   return (
     <div className="mobile-container bg-background pb-24">
