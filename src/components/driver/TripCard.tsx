@@ -29,8 +29,7 @@ export function TripCard({ trip, status = "upcoming" }: TripCardProps) {
     <motion.div
       whileTap={{ scale: 0.97 }}
       onClick={() => {
-        setActiveTrip(trip);
-        navigate(`/driver/trip/active`);
+        navigate(`/driver/trip/${trip.id}`);
       }}
       className="shuttle-card cursor-pointer"
     >
