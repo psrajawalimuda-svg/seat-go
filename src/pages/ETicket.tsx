@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, MapPin, Armchair, Clock, Bus, Share2, Printer, Calendar, Route, User, Phone } from "lucide-react";
+import { CheckCircle2, MapPin, Armchair, Clock, Bus, Share2, Printer, Calendar, Route, User, Phone, MessageCircle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +68,11 @@ export default function ETicket() {
   };
 
   const handlePrint = () => window.print();
+
+  const handleWhatsApp = () => {
+    const url = `https://wa.me/?text=${encodeURIComponent(ticketText)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   const details = [
     { icon: <User className="w-4 h-4 text-primary" />, label: "Passenger", value: booking.passengerName || "—" },
@@ -144,6 +149,9 @@ export default function ETicket() {
 
         {/* Action buttons */}
         <div className="space-y-3 print:hidden">
+          <Button onClick={handleWhatsApp} className="w-full h-12 rounded-xl font-semibold gap-2 bg-[hsl(142,70%,40%)] hover:bg-[hsl(142,70%,35%)] text-white">
+            <MessageCircle className="w-4 h-4" /> Share via WhatsApp
+          </Button>
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" onClick={handleShare} className="h-12 rounded-xl font-semibold gap-2">
               <Share2 className="w-4 h-4" /> Share
