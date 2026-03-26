@@ -24,6 +24,8 @@ import DriverTripDetail from "./pages/driver/DriverTripDetail";
 import DriverPassengers from "./pages/driver/DriverPassengers";
 import DriverProfile from "./pages/driver/DriverProfile";
 import { AdminLayout } from "./components/admin/AdminLayout";
+import { ProtectedAdminRoute } from "./components/admin/ProtectedAdminRoute";
+import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/Dashboard";
 import DriversManagement from "./pages/admin/DriversManagement";
 import TripsManagement from "./pages/admin/TripsManagement";
