@@ -1,16 +1,16 @@
 
 
-# Add Logout Button
+# Tambahkan Pintasan Login di Home Page
+
+## Overview
+Tambahkan tombol/icon login di header Home page agar pengguna (admin/driver) bisa langsung mengakses halaman login tanpa harus mengetik URL manual.
 
 ## Changes
 
-### 1. Admin Layout Header (`src/components/admin/AdminLayout.tsx`)
-- Import `useAuth` and `LogOut` icon
-- Add a logout button to the right side of the admin header bar
-- On click, call `signOut()` then navigate to `/login`
+### 1. Update Home Page Header (`src/pages/Home.tsx`)
+- Tambahkan tombol login (icon `LogIn`) di sebelah kiri tombol User yang sudah ada di header
+- Klik → navigasi ke `/login`
+- Style konsisten dengan tombol User yang sudah ada (ghost, rounded, white)
 
-### 2. Admin Sidebar (`src/components/admin/AdminSidebar.tsx`)
-- Add a logout button at the bottom of the sidebar for when sidebar is expanded
-
-No database changes needed.
+Perubahan minimal — hanya 1 file, hanya menambahkan 1 tombol icon.
 
