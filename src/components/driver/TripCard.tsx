@@ -28,7 +28,10 @@ export function TripCard({ trip, status = "upcoming" }: TripCardProps) {
   return (
     <motion.div
       whileTap={{ scale: 0.97 }}
-      onClick={() => navigate(`/driver/trip/${trip.id}`)}
+      onClick={() => {
+        setActiveTrip(trip);
+        navigate(`/driver/trip/active`);
+      }}
       className="shuttle-card cursor-pointer"
     >
       <div className="flex items-start justify-between mb-3">

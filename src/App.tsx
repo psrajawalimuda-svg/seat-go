@@ -47,7 +47,7 @@ const App = () => (
               <Route path="/track-ticket" element={<TrackTicket />} />
               <Route path="/dashboard" element={<UserDashboard />} />
               <Route path="/driver" element={<DriverHome />} />
-              <Route path="/driver/trip/:id" element={<DriverTripDetail />} />
+
               <Route path="/driver/trip/active" element={<DriverTripActive />} />
               <Route path="/driver/trips" element={<DriverTrips />} />
               <Route path="/driver/passengers" element={<DriverPassengers />} />
