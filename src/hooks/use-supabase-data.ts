@@ -246,23 +246,41 @@ export function useBookings() {
   return { ...query, insert, updateStatus };
 }
 
-// Reviews table doesn't exist in the database yet — stub hook
 export function useReviews() {
+  const qc = useQueryClient();
   const query = useQuery({
     queryKey: ["reviews"],
-    queryFn: async () => [] as (DbReview & { trip: DbTrip; driver: DbDriver })[],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      // Fetch trips and drivers for joining
+      const { data: trips } = await supabase.from("trips").select("*");
+      const { data: drivers } = await supabase.from("drivers").select("*");
+      return (data as any[]).map((r) => ({
+        ...r,
+        trip: (trips || []).find((t: any) => t.id === r.trip_id) || null,
+        driver: (drivers || []).find((d: any) => d.id === r.driver_id) || null,
+      })) as (DbReview & { trip: DbTrip; driver: DbDriver })[];
+    },
   });
 
   const insert = useMutation({
-    mutationFn: async (_review: Omit<DbReview, "id" | "created_at">) => {
-      console.warn("Reviews table not yet created");
+    mutationFn: async (review: Omit<DbReview, "id" | "created_at">) => {
+      const { error } = await supabase.from("reviews").insert(review as any);
+      if (error) throw error;
     },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reviews"] }),
   });
 
   const deleteReview = useMutation({
-    mutationFn: async (_id: string) => {
-      console.warn("Reviews table not yet created");
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("reviews").delete().eq("id", id);
+      if (error) throw error;
     },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reviews"] }),
   });
 
   return { ...query, insert, deleteReview };

@@ -52,8 +52,9 @@ export default function DriverTripDetail() {
       .map(b => toBooking(b, pickupPoints));
   }, [id, dbBookings, pickupPoints]);
 
-  // Auth check
-  const isAuthorized = trip && trip.driverId === "d1"; // Simulated auth check for current driver
+  // Auth check — use localStorage driver identity
+  const savedDriverId = typeof window !== "undefined" ? localStorage.getItem("shuttle_driver_id") : null;
+  const isAuthorized = trip && (savedDriverId ? trip.driverId === savedDriverId : true);
 
   const filteredBookings = useMemo(() => {
     return tripBookings.filter(b => {
