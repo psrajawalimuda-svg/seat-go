@@ -170,6 +170,7 @@ export type Database = {
           id: string
           route_name: string
           total_seats: number
+          vehicle_type: string
         }
         Insert: {
           base_price?: number
@@ -180,6 +181,7 @@ export type Database = {
           id?: string
           route_name: string
           total_seats?: number
+          vehicle_type?: string
         }
         Update: {
           base_price?: number
@@ -190,6 +192,7 @@ export type Database = {
           id?: string
           route_name?: string
           total_seats?: number
+          vehicle_type?: string
         }
         Relationships: [
           {
