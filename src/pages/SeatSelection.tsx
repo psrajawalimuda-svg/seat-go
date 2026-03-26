@@ -19,7 +19,7 @@ function SeatIcon({ status, number, onSelect }: { status: SeatStatus; number: nu
       onClick={status !== "booked" ? onSelect : undefined}
       disabled={status === "booked"}
       className={cn(
-        "w-14 h-14 rounded-xl flex items-center justify-center text-sm font-bold transition-colors relative",
+        "w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-sm font-bold transition-colors relative touch-target",
         status === "available" && "bg-primary-light text-primary border-2 border-primary/20 tap-highlight",
         status === "selected" && "shuttle-gradient text-primary-foreground shadow-md animate-seat-pop",
         status === "booked" && "bg-muted text-muted-foreground/40 cursor-not-allowed"
@@ -32,7 +32,7 @@ function SeatIcon({ status, number, onSelect }: { status: SeatStatus; number: nu
 
 function DriverCell() {
   return (
-    <div className="w-14 h-14 rounded-xl bg-muted border-2 border-border flex items-center justify-center">
+    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-muted border-2 border-border flex items-center justify-center">
       <CircleDot className="w-6 h-6 text-muted-foreground" />
     </div>
   );
@@ -114,7 +114,7 @@ export default function SeatSelection() {
                 <div key={rowIdx} className="flex gap-2.5 items-center">
                   {row.map((item, colIdx) => {
                     if (item.cell === "driver") return <DriverCell key={colIdx} />;
-                    if (item.cell === "empty") return <div key={colIdx} className="w-14 h-14" />;
+                    if (item.cell === "empty") return <div key={colIdx} className="w-12 h-12 sm:w-14 sm:h-14" />;
                     if (item.cell === "seat") {
                       return (
                         <SeatIcon

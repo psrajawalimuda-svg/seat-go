@@ -167,8 +167,8 @@ export default function ETicket() {
 
         {/* Action buttons */}
         <div className="space-y-3 print:hidden">
-          <Button onClick={handleWhatsApp} className="w-full h-12 rounded-xl font-semibold gap-2 bg-[hsl(142,70%,40%)] hover:bg-[hsl(142,70%,35%)] text-white">
-            <MessageCircle className="w-4 h-4" /> Share via WhatsApp
+          <Button onClick={handleWhatsApp} className="w-full h-12 rounded-xl font-semibold gap-2 bg-[hsl(142,70%,40%)] hover:bg-[hsl(142,70%,35%)] text-white touch-target">
+            <MessageCircle className="w-5 h-5" /> Share via WhatsApp
           </Button>
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" onClick={handleShare} className="h-12 rounded-xl font-semibold gap-2">
@@ -178,10 +178,10 @@ export default function ETicket() {
               <Download className="w-4 h-4" /> Save PDF
             </Button>
           </div>
-          <Button onClick={() => navigate("/tracking")} className="w-full h-13 rounded-xl shuttle-gradient text-primary-foreground font-semibold" size="lg">
+          <Button onClick={() => navigate("/tracking")} className="w-full h-14 rounded-xl shuttle-gradient text-primary-foreground font-semibold touch-target" size="lg">
             Track Driver
           </Button>
-          <Button variant="outline" onClick={() => navigate("/")} className="w-full h-13 rounded-xl font-semibold" size="lg">
+          <Button variant="outline" onClick={() => navigate("/")} className="w-full h-14 rounded-xl font-semibold touch-target" size="lg">
             Back to Home
           </Button>
         </div>

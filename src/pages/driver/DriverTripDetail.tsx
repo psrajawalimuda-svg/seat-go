@@ -150,7 +150,7 @@ export default function DriverTripDetail() {
     : 0;
 
   return (
-    <div className="mobile-container bg-background pb-6">
+    <div className="mobile-container bg-background pb-6 safe-top">
       <div className="sticky top-0 z-20 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="tap-highlight"><ArrowLeft className="w-5 h-5 text-foreground" /></button>
         <div className="flex-1">
@@ -167,7 +167,7 @@ export default function DriverTripDetail() {
         <Button size="sm" variant="outline" className="rounded-xl" onClick={() => window.open(`tel:${trip.driverPhone}`)}><Phone className="w-4 h-4" /></Button>
       </div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-64 mx-4 mt-4 rounded-2xl overflow-hidden border border-border/50 shadow-lg relative">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[35vh] min-h-[220px] mx-4 mt-4 rounded-2xl overflow-hidden border border-border/50 shadow-lg relative">
         <MapContainer center={busPosition} zoom={14} scrollWheelZoom={false} zoomControl={false} attributionControl={false} style={{ height: "100%", width: "100%" }}>
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <Polyline positions={ROUTE_COORDS} pathOptions={{ color: "hsl(217,91%,50%)", weight: 3, opacity: 0.25, dashArray: "6 6" }} />
@@ -203,19 +203,19 @@ export default function DriverTripDetail() {
         <PickupTimeline points={pickupPoints} departureTime={trip.departureTime} tripId={trip.id} currentStopIndex={currentStop} />
       </div>
 
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md px-4 pb-6 pt-3 bg-gradient-to-t from-background via-background to-transparent z-10">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-4 pb-6 pt-3 bg-gradient-to-t from-background via-background to-transparent z-10 safe-bottom">
         {tripStatus === "start" && (
-          <Button className="w-full h-14 rounded-2xl shuttle-gradient text-primary-foreground font-bold text-base" onClick={() => setCurrentStop(1)}>
+          <Button className="w-full h-14 rounded-2xl shuttle-gradient text-primary-foreground font-bold text-base touch-target" onClick={() => setCurrentStop(1)}>
             <Play className="w-5 h-5 mr-2" /> Mulai Perjalanan
           </Button>
         )}
         {tripStatus === "running" && (
-          <Button className="w-full h-14 rounded-2xl shuttle-gradient text-primary-foreground font-bold text-base" onClick={() => setCurrentStop((prev) => prev + 1)}>
+          <Button className="w-full h-14 rounded-2xl shuttle-gradient text-primary-foreground font-bold text-base touch-target" onClick={() => setCurrentStop((prev) => prev + 1)}>
             <CheckCircle2 className="w-5 h-5 mr-2" /> Tiba di {pickupPoints[currentStop]?.label}
           </Button>
         )}
         {tripStatus === "done" && (
-          <Button className="w-full h-14 rounded-2xl shuttle-gradient-green text-secondary-foreground font-bold text-base" onClick={() => navigate("/driver")}>
+          <Button className="w-full h-14 rounded-2xl shuttle-gradient-green text-secondary-foreground font-bold text-base touch-target" onClick={() => navigate("/driver")}>
             <CheckCircle2 className="w-5 h-5 mr-2" /> Perjalanan Selesai
           </Button>
         )}

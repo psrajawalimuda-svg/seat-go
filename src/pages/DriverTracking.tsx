@@ -100,7 +100,7 @@ export default function DriverTracking() {
           <span className="text-xs font-semibold text-muted-foreground">{isConnected ? "GPS Real-time Aktif" : "Menghubungkan..."}</span>
         </div>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-72 rounded-2xl overflow-hidden shadow-lg border border-border/50">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[40vh] min-h-[260px] rounded-2xl overflow-hidden shadow-lg border border-border/50">
           <MapContainer center={busPosition} zoom={14} scrollWheelZoom={false} zoomControl={false} attributionControl={false} style={{ height: "100%", width: "100%" }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <Polyline positions={ROUTE_COORDS} pathOptions={{ color: "hsl(217, 91%, 50%)", weight: 3, opacity: 0.3, dashArray: "6 6" }} />
