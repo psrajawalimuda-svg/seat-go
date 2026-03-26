@@ -54,26 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function fetchProfile(userId: string) {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error) {
-        console.error("Error fetching profile:", error);
-        // If profile doesn't exist, we might want to create it or handle accordingly
-        setProfile(null);
-      } else {
-        setProfile(data as Profile);
-      }
-    } catch (err) {
-      console.error("Unexpected error fetching profile:", err);
-    } finally {
-      setIsLoading(false);
-    }
+  async function fetchProfile(_userId: string) {
+    // Profiles table doesn't exist yet — skip fetching
+    setProfile(null);
+    setIsLoading(false);
   }
 
   const signOut = async () => {

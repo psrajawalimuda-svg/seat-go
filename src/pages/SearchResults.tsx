@@ -11,12 +11,18 @@ import { useTrips, toTrip } from "@/hooks/use-supabase-data";
 
 export default function SearchResults() {
   const navigate = useNavigate();
-  const { pickupPoint, setSelectedTripId } = useBooking();
+  const { pickupPoint, date, setSelectedTripId } = useBooking();
   const { data: dbTrips, isLoading } = useTrips();
 
   if (!pickupPoint) { navigate("/"); return null; }
 
-  const trips = (dbTrips || []).map(toTrip);
+  const selectedDate = date ? new Date(date).toISOString().split('T')[0] : null;
+
+  const trips = (dbTrips || []).map(toTrip).filter(t => {
+    if (!selectedDate) return true;
+    if (!t.departureDate) return true;
+    return t.departureDate.split('T')[0] === selectedDate;
+  });
 
   const handleSelect = (tripId: string) => {
     setSelectedTripId(tripId);

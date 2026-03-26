@@ -55,7 +55,7 @@ export default function DriverHome() {
   
   // Filter today's missions
   const todayMissions = useMemo(() => 
-    driverTrips.filter((t) => t.date === todayDate),
+    driverTrips.filter((t) => t.departureDate?.split('T')[0] === todayDate),
     [driverTrips, todayDate]
   );
 

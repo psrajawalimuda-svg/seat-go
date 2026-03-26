@@ -11,7 +11,8 @@ import {
   User as UserIcon,
   Phone,
   MessageCircle,
-  LogOut
+  LogOut,
+  Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,7 +74,7 @@ export default function UserDashboard() {
       tripId: booking.trip_id,
       passengerName: booking.passenger_name,
       passengerPhone: booking.passenger_phone,
-      pickupPoint: { id: booking.pickup_point_id, label: "", name: "", coords: [0,0], minutesFromStart: 0 }, // Simplified
+      pickupPoint: { id: booking.pickup_point_id, label: "", name: "", order: 0, coords: [0,0], minutesFromStart: 0 },
       seatNumber: booking.seat_number,
       date: booking.date,
       totalPrice: booking.total_price,
