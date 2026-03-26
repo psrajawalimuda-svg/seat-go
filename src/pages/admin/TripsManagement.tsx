@@ -76,6 +76,7 @@ export default function TripsManagement() {
             <TableHeader>
               <TableRow>
                 <TableHead>Route</TableHead>
+                <TableHead>Vehicle</TableHead>
                 <TableHead>Departure</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Seats</TableHead>
@@ -91,6 +92,7 @@ export default function TripsManagement() {
                 return (
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{trip.routeName}</TableCell>
+                    <TableCell><Badge variant="outline">{VEHICLE_LAYOUTS[trip.vehicleType]?.label || trip.vehicleType}</Badge></TableCell>
                     <TableCell>{trip.departureTime}</TableCell>
                     <TableCell>{formatPrice(trip.basePrice)}</TableCell>
                     <TableCell>
@@ -118,7 +120,20 @@ export default function TripsManagement() {
               <div><Label>Departure Time</Label><Input type="time" value={form.departure_time} onChange={e => setForm(f => ({ ...f, departure_time: e.target.value }))} /></div>
               <div><Label>Base Price (IDR)</Label><Input type="number" value={form.base_price} onChange={e => setForm(f => ({ ...f, base_price: e.target.value }))} /></div>
             </div>
-            <div><Label>Total Seats</Label><Input type="number" value={form.total_seats} onChange={e => setForm(f => ({ ...f, total_seats: e.target.value }))} /></div>
+            <div>
+              <Label>Vehicle Type</Label>
+              <Select value={form.vehicle_type} onValueChange={(v) => {
+                const layout = VEHICLE_LAYOUTS[v];
+                setForm(f => ({ ...f, vehicle_type: v, total_seats: String(layout?.totalSeats || 10) }));
+              }}>
+                <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(VEHICLE_LAYOUTS).map(([key, layout]) => (
+                    <SelectItem key={key} value={key}>{layout.label} ({layout.totalSeats} seats)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Assign Driver</Label>
               <Select value={form.driver_id} onValueChange={(v) => setForm(f => ({ ...f, driver_id: v }))}>
