@@ -1,0 +1,87 @@
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Trip } from "@/data/shuttle-data";
+
+interface UseTripTrackingProps {
+  activeTrip: Trip | null;
+  currentStopIndex: number;
+  throttleMs?: number;
+}
+
+export function useTripTracking({ 
+  activeTrip, 
+  currentStopIndex, 
+  throttleMs = 3000 
+}: UseTripTrackingProps) {
+  const [currentPos, setCurrentPos] = useState<[number, number] | null>(null);
+  const [bearing, setBearing] = useState(0);
+  const [speed, setSpeed] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  
+  const lastUpdateRef = useRef<number>(0);
+  const lastPosRef = useRef<[number, number] | null>(null);
+
+  useEffect(() => {
+    if (!activeTrip || !("geolocation" in navigator)) {
+      if (!("geolocation" in navigator)) {
+        setError("Geolocation is not supported by your browser");
+      }
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, heading, speed: currentSpeed } = pos.coords;
+        const newPos: [number, number] = [latitude, longitude];
+        const now = Date.now();
+        
+        // Calculate bearing if heading is null and we have a previous position
+        if (lastPosRef.current && heading === null) {
+          const dLon = ((longitude - lastPosRef.current[1]) * Math.PI) / 180;
+          const lat1 = (lastPosRef.current[0] * Math.PI) / 180;
+          const lat2 = (latitude * Math.PI) / 180;
+          const y = Math.sin(dLon) * Math.cos(lat2);
+          const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+          const b = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+          setBearing(b);
+        } else if (heading !== null) {
+          setBearing(heading);
+        }
+
+        setCurrentPos(newPos);
+        setSpeed(Math.round((currentSpeed || 0) * 3.6)); // m/s to km/h
+        lastPosRef.current = newPos;
+
+        // Throttled Supabase Update
+        if (now - lastUpdateRef.current > throttleMs) {
+          lastUpdateRef.current = now;
+          supabase.from("driver_locations").upsert({
+            trip_id: activeTrip.id,
+            driver_id: activeTrip.driverId || activeTrip.driverName,
+            latitude,
+            longitude,
+            bearing: heading || 0,
+            speed: Math.round((currentSpeed || 0) * 3.6),
+            current_stop_index: currentStopIndex,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "trip_id" }).then(({ error }) => {
+            if (error) console.error("Error updating location:", error);
+          });
+        }
+      },
+      (err) => {
+        let msg = "Unknown geolocation error";
+        if (err.code === err.PERMISSION_DENIED) msg = "Location permission denied";
+        else if (err.code === err.POSITION_UNAVAILABLE) msg = "Location information unavailable";
+        else if (err.code === err.TIMEOUT) msg = "Location request timed out";
+        setError(msg);
+        console.error("Geolocation error:", err);
+      },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [activeTrip?.id, currentStopIndex, throttleMs]);
+
+  return { currentPos, bearing, speed, error };
+}
