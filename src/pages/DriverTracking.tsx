@@ -70,7 +70,7 @@ export default function DriverTracking() {
   if (!booking || !trip) { navigate("/"); return null; }
 
   const pickupTime = getPickupTime(trip.departureTime, booking.pickupPoint);
-  const center: [number, number] = [-6.9190, 107.6220];
+  const center: [number, number] = [-6.9175, 107.6235];
 
   return (
     <div className="mobile-container min-h-screen bg-background">
