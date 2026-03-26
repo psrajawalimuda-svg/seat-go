@@ -159,7 +159,33 @@ export default function DriverTripDetail() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!trip) {
+  // Write position to database for passenger real-time tracking
+  useEffect(() => {
+    if (!id) return;
+    const pos = smoothPath[busIndex];
+    const nextI = Math.min(busIndex + 1, smoothPath.length - 1);
+    const b = getBearing(smoothPath[busIndex], smoothPath[nextI]);
+    const spd = currentStop > 0 && currentStop < PICKUP_POINTS.length ? Math.floor(25 + Math.random() * 15) : 0;
+
+    const upsert = async () => {
+      await supabase.from("driver_locations").upsert(
+        {
+          trip_id: id,
+          driver_id: "d1",
+          latitude: pos[0] + jitter[0],
+          longitude: pos[1] + jitter[1],
+          bearing: b,
+          speed: spd,
+          current_stop_index: currentStop,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "trip_id" }
+      );
+    };
+    upsert();
+  }, [id, busIndex, currentStop, jitter, smoothPath]);
+
+
     navigate("/driver");
     return null;
   }
