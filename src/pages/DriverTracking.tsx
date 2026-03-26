@@ -5,7 +5,7 @@ import { Phone, Navigation, Bus, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useBooking } from "@/context/BookingContext";
-import { MOCK_TRIPS, getPickupTime } from "@/data/shuttle-data";
+import { MOCK_TRIPS, getPickupTime, PICKUP_POINTS } from "@/data/shuttle-data";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
