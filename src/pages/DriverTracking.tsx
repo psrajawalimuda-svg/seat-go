@@ -1,82 +1,167 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Phone, Navigation, Bus, MapPin, Clock } from "lucide-react";
+import { Phone, Navigation, MapPin, Clock, Gauge } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useBooking } from "@/context/BookingContext";
 import { MOCK_TRIPS, getPickupTime, PICKUP_POINTS } from "@/data/shuttle-data";
+import { supabase } from "@/integrations/supabase/client";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Custom icons
-const busIcon = L.divIcon({
-  className: "",
-  html: `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,hsl(217,91%,50%),hsl(217,91%,60%));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,99,235,0.4)">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></svg>
-  </div>`,
-  iconSize: [36, 36],
-  iconAnchor: [18, 18],
-});
-
-const pickupIcon = L.divIcon({
-  className: "",
-  html: `<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,hsl(152,69%,45%),hsl(152,69%,55%));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(34,197,94,0.4)">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-  </div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-
-// Route coords derived from all pickup points
 const ROUTE_COORDS = PICKUP_POINTS.map((p) => p.coords);
 
-const makeStopIcon = (label: string, isSelected: boolean) =>
+const makeBusIcon = (bearing: number) =>
   L.divIcon({
     className: "",
-    html: `<div style="width:${isSelected ? 28 : 22}px;height:${isSelected ? 28 : 22}px;border-radius:50%;background:${isSelected ? "linear-gradient(135deg,hsl(152,69%,45%),hsl(152,69%,55%))" : "white"};border:2px solid ${isSelected ? "hsl(152,69%,40%)" : "hsl(217,91%,50%)"};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:${isSelected ? 10 : 8}px;font-weight:700;color:${isSelected ? "white" : "hsl(217,91%,50%)"};font-family:sans-serif">${label}</div>`,
+    html: `<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,hsl(217,91%,50%),hsl(217,91%,60%));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,99,235,0.5);border:3px solid white;transform:rotate(${bearing}deg)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L19 21l-7-4-7 4z"/></svg>
+    </div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+
+const makeStopIcon = (label: string, isSelected: boolean, isCompleted: boolean) =>
+  L.divIcon({
+    className: "",
+    html: `<div style="width:${isSelected ? 28 : 22}px;height:${isSelected ? 28 : 22}px;border-radius:50%;background:${
+      isCompleted
+        ? "hsl(152,69%,45%)"
+        : isSelected
+        ? "linear-gradient(135deg,hsl(152,69%,45%),hsl(152,69%,55%))"
+        : "white"
+    };border:2px solid ${isSelected || isCompleted ? "hsl(152,69%,40%)" : "hsl(217,91%,50%)"};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:${isSelected ? 10 : 8}px;font-weight:700;color:${isSelected || isCompleted ? "white" : "hsl(217,91%,50%)"};font-family:sans-serif">${isCompleted ? "✓" : label}</div>`,
     iconSize: [isSelected ? 28 : 22, isSelected ? 28 : 22],
     iconAnchor: [isSelected ? 14 : 11, isSelected ? 14 : 11],
   });
 
-function AnimatedBusMarker({ progress }: { progress: number }) {
+function LiveBusMarker({
+  position,
+  bearing,
+}: {
+  position: [number, number];
+  bearing: number;
+}) {
   const map = useMap();
-  const idx = Math.min(Math.floor(progress * (ROUTE_COORDS.length - 1)), ROUTE_COORDS.length - 1);
-  const pos = ROUTE_COORDS[idx];
 
   useEffect(() => {
-    map.setView(pos, map.getZoom(), { animate: true, duration: 1 });
-  }, [pos, map]);
+    map.setView(position, map.getZoom(), { animate: true, duration: 0.8 });
+  }, [position, map]);
 
-  return <Marker position={pos} icon={busIcon}><Popup>🚌 Driver is here</Popup></Marker>;
+  const icon = useMemo(() => makeBusIcon(bearing), [bearing]);
+
+  return (
+    <Marker position={position} icon={icon}>
+      <Popup>🚌 Posisi driver saat ini</Popup>
+    </Marker>
+  );
+}
+
+interface DriverLocation {
+  latitude: number;
+  longitude: number;
+  bearing: number;
+  speed: number;
+  current_stop_index: number;
+  updated_at: string;
 }
 
 export default function DriverTracking() {
   const navigate = useNavigate();
   const { booking } = useBooking();
   const trip = MOCK_TRIPS.find((t) => t.id === booking?.tripId);
-  const [eta, setEta] = useState(8);
-  const [progress, setProgress] = useState(0.2);
 
+  const [driverLoc, setDriverLoc] = useState<DriverLocation | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Fetch initial location & subscribe to realtime updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      setEta((prev) => Math.max(1, prev - 1));
-      setProgress((prev) => Math.min(0.95, prev + 0.08));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!booking?.tripId) return;
 
-  if (!booking || !trip) { navigate("/"); return null; }
+    // Initial fetch
+    const fetchLocation = async () => {
+      const { data } = await supabase
+        .from("driver_locations")
+        .select("*")
+        .eq("trip_id", booking.tripId)
+        .maybeSingle();
+      if (data) {
+        setDriverLoc(data as DriverLocation);
+        setIsConnected(true);
+      }
+    };
+    fetchLocation();
+
+    // Realtime subscription
+    const channel = supabase
+      .channel(`driver-loc-${booking.tripId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "driver_locations",
+          filter: `trip_id=eq.${booking.tripId}`,
+        },
+        (payload) => {
+          if (payload.new) {
+            setDriverLoc(payload.new as DriverLocation);
+            setIsConnected(true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [booking?.tripId]);
+
+  if (!booking || !trip) {
+    navigate("/");
+    return null;
+  }
 
   const pickupTime = getPickupTime(trip.departureTime, booking.pickupPoint);
-  const center: [number, number] = [-6.9175, 107.6235];
+  const busPosition: [number, number] = driverLoc
+    ? [driverLoc.latitude, driverLoc.longitude]
+    : [-6.9175, 107.6235];
+  const bearing = driverLoc?.bearing || 0;
+  const speed = driverLoc?.speed || 0;
+  const currentStopIndex = driverLoc?.current_stop_index || 0;
+
+  // Calculate ETA based on stop index relative to passenger pickup
+  const passengerStopIndex = PICKUP_POINTS.findIndex(
+    (p) => p.id === booking.pickupPoint.id
+  );
+  const stopsAway = Math.max(0, passengerStopIndex - currentStopIndex);
+  const etaMinutes =
+    stopsAway > 0 && passengerStopIndex >= 0
+      ? PICKUP_POINTS[passengerStopIndex].minutesFromStart -
+        PICKUP_POINTS[currentStopIndex]?.minutesFromStart || 0
+      : 0;
+
+  const driverPassed = currentStopIndex > passengerStopIndex;
 
   return (
     <div className="mobile-container min-h-screen bg-background">
-      <ScreenHeader title="Track Driver" />
+      <ScreenHeader title="Lacak Driver" />
 
       <div className="px-4 py-4 space-y-4">
+        {/* Live indicator */}
+        <div className="flex items-center gap-2 justify-center">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              isConnected ? "bg-secondary animate-pulse" : "bg-muted-foreground"
+            }`}
+          />
+          <span className="text-xs font-semibold text-muted-foreground">
+            {isConnected ? "GPS Real-time Aktif" : "Menghubungkan..."}
+          </span>
+        </div>
+
         {/* Leaflet Map */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -84,8 +169,8 @@ export default function DriverTracking() {
           className="h-72 rounded-2xl overflow-hidden shadow-lg border border-border/50"
         >
           <MapContainer
-            center={center}
-            zoom={13}
+            center={busPosition}
+            zoom={14}
             scrollWheelZoom={false}
             zoomControl={false}
             attributionControl={false}
@@ -94,23 +179,60 @@ export default function DriverTracking() {
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <Polyline
               positions={ROUTE_COORDS}
-              pathOptions={{ color: "hsl(217, 91%, 50%)", weight: 4, opacity: 0.5, dashArray: "8 8" }}
+              pathOptions={{
+                color: "hsl(217, 91%, 50%)",
+                weight: 3,
+                opacity: 0.3,
+                dashArray: "6 6",
+              }}
             />
-            {PICKUP_POINTS.map((p) => (
+            {PICKUP_POINTS.map((p, idx) => (
               <Marker
                 key={p.id}
                 position={p.coords}
-                icon={makeStopIcon(p.label, p.id === booking.pickupPoint.id)}
+                icon={makeStopIcon(
+                  p.label,
+                  p.id === booking.pickupPoint.id,
+                  idx < currentStopIndex
+                )}
               >
                 <Popup>
                   <strong>{p.label}</strong> — {p.name}
-                  {p.id === booking.pickupPoint.id && <><br/>✅ Your pickup</>}
+                  {p.id === booking.pickupPoint.id && (
+                    <>
+                      <br />✅ Titik jemput kamu
+                    </>
+                  )}
                 </Popup>
               </Marker>
             ))}
-            <AnimatedBusMarker progress={progress} />
+            {isConnected && (
+              <LiveBusMarker position={busPosition} bearing={bearing} />
+            )}
           </MapContainer>
         </motion.div>
+
+        {/* Live stats */}
+        {isConnected && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2"
+          >
+            <div className="flex-1 flex items-center gap-2 bg-primary/10 rounded-xl px-3 py-2">
+              <Gauge className="w-4 h-4 text-primary" />
+              <span className="text-sm font-bold text-primary">
+                {Math.round(speed)} km/h
+              </span>
+            </div>
+            <div className="flex-1 flex items-center gap-2 bg-secondary/10 rounded-xl px-3 py-2">
+              <MapPin className="w-4 h-4 text-secondary" />
+              <span className="text-sm font-bold text-secondary">
+                {stopsAway > 0 ? `${stopsAway} halte lagi` : driverPassed ? "Sudah lewat" : "Sudah tiba!"}
+              </span>
+            </div>
+          </motion.div>
+        )}
 
         {/* ETA card */}
         <motion.div
@@ -123,8 +245,25 @@ export default function DriverTracking() {
               <Navigation className="w-6 h-6 text-primary-foreground" />
             </div>
             <div className="flex-1">
-              <p className="text-base font-bold text-foreground">Driver is approaching</p>
-              <p className="text-sm text-muted-foreground">Estimated arrival in <span className="font-bold text-primary">{eta} min</span></p>
+              <p className="text-base font-bold text-foreground">
+                {driverPassed
+                  ? "Driver sudah melewati halte kamu"
+                  : etaMinutes > 0
+                  ? "Driver sedang menuju"
+                  : "Driver akan segera tiba"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {etaMinutes > 0 ? (
+                  <>
+                    Perkiraan tiba dalam{" "}
+                    <span className="font-bold text-primary">
+                      ~{etaMinutes} menit
+                    </span>
+                  </>
+                ) : (
+                  "Bersiap di titik jemput"
+                )}
+              </p>
             </div>
           </div>
 
@@ -135,8 +274,12 @@ export default function DriverTracking() {
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">{trip.driverName}</p>
-              <p className="text-xs text-muted-foreground">{trip.vehiclePlate}</p>
+              <p className="text-sm font-semibold text-foreground">
+                {trip.driverName}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {trip.vehiclePlate}
+              </p>
             </div>
             <Button
               size="sm"
@@ -144,7 +287,7 @@ export default function DriverTracking() {
               onClick={() => window.open(`tel:${trip.driverPhone}`)}
             >
               <Phone className="w-4 h-4 mr-1" />
-              Call
+              Hubungi
             </Button>
           </div>
         </motion.div>
@@ -154,12 +297,18 @@ export default function DriverTracking() {
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4 text-primary" />
             <span className="text-sm text-foreground">
-              <span className="font-semibold">{booking.pickupPoint.label}</span> — {booking.pickupPoint.name}
+              <span className="font-semibold">
+                {booking.pickupPoint.label}
+              </span>{" "}
+              — {booking.pickupPoint.name}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-shuttle-warning" />
-            <span className="text-sm text-foreground">Pickup at <span className="font-semibold">{pickupTime}</span></span>
+            <Clock className="w-4 h-4 text-[hsl(var(--shuttle-warning))]" />
+            <span className="text-sm text-foreground">
+              Dijemput pukul{" "}
+              <span className="font-semibold">{pickupTime}</span>
+            </span>
           </div>
         </div>
       </div>

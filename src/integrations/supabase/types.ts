@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      driver_locations: {
+        Row: {
+          bearing: number
+          current_stop_index: number
+          driver_id: string
+          id: string
+          latitude: number
+          longitude: number
+          speed: number
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          bearing?: number
+          current_stop_index?: number
+          driver_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          speed?: number
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          bearing?: number
+          current_stop_index?: number
+          driver_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          speed?: number
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
