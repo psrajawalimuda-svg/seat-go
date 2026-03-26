@@ -24,6 +24,8 @@ import DriverTripDetail from "./pages/driver/DriverTripDetail";
 import DriverPassengers from "./pages/driver/DriverPassengers";
 import DriverProfile from "./pages/driver/DriverProfile";
 import { AdminLayout } from "./components/admin/AdminLayout";
+import { ProtectedAdminRoute } from "./components/admin/ProtectedAdminRoute";
+import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/Dashboard";
 import DriversManagement from "./pages/admin/DriversManagement";
 import TripsManagement from "./pages/admin/TripsManagement";
@@ -63,7 +65,8 @@ const App = () => (
                 <Route path="/driver/passengers" element={<ProtectedDriverRoute><DriverPassengers /></ProtectedDriverRoute>} />
                 <Route path="/driver/profile" element={<ProtectedDriverRoute><DriverProfile /></ProtectedDriverRoute>} />
                 
-                <Route path="/admin" element={<AdminLayout />}>
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="drivers" element={<DriversManagement />} />
                   <Route path="trips" element={<TripsManagement />} />
