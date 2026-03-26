@@ -7,10 +7,16 @@ export interface DbDriver {
   id: string;
   name: string;
   phone: string;
+  email?: string;
+  license_number?: string;
   plate: string;
-  status: string;
+  status: string; // online, offline, busy
   rating: number;
   total_trips: number;
+  latitude?: number;
+  longitude?: number;
+  bearing?: number;
+  last_active?: string;
   created_at: string;
 }
 
@@ -45,6 +51,10 @@ export interface DbPickupPoint {
   id: string;
   label: string;
   name: string;
+  address?: string;
+  phone?: string;
+  operating_hours?: string;
+  is_active?: boolean;
   order_index: number;
   minutes_from_start: number;
   lat: number;
@@ -57,6 +67,10 @@ export function toPickupPoint(p: DbPickupPoint) {
     id: p.id,
     label: p.label,
     name: p.name,
+    address: p.address || "",
+    phone: p.phone || "",
+    operatingHours: p.operating_hours || "",
+    isActive: p.is_active ?? true,
     order: p.order_index,
     minutesFromStart: p.minutes_from_start,
     coords: [p.lat, p.lng] as [number, number],
