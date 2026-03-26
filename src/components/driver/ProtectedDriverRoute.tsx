@@ -15,7 +15,7 @@ export function ProtectedDriverRoute({ children }: { children: React.ReactNode }
   }
 
   if (!user) {
-    return <Navigate to="/driver/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;

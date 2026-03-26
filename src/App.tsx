@@ -17,7 +17,7 @@ import TrackTicket from "./pages/TrackTicket";
 import UserDashboard from "./pages/UserDashboard";
 import NotFound from "./pages/NotFound";
 import DriverHome from "./pages/driver/DriverHome";
-import DriverLogin from "./pages/driver/DriverLogin";
+import Login from "./pages/Login";
 import DriverTripActive from "./pages/driver/DriverTripActive";
 import DriverTrips from "./pages/driver/DriverTrips";
 import DriverTripDetail from "./pages/driver/DriverTripDetail";
