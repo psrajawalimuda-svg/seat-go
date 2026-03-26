@@ -1,9 +1,13 @@
-import { DollarSign, Users, Bus, ClipboardList, Star } from "lucide-react";
+import { lazy, Suspense } from "react";
+import { DollarSign, Users, Bus, ClipboardList, Star, MapPin } from "lucide-react";
 import { StatCard } from "@/components/admin/StatCard";
 import { formatPrice } from "@/data/shuttle-data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const FleetMap = lazy(() => import("@/components/admin/FleetMap"));
 import { useDrivers, useTrips, useBookings, usePickupPoints, useReviews, toTrip } from "@/hooks/use-supabase-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatDate } from "@/lib/utils";
