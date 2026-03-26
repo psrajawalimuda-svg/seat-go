@@ -43,6 +43,20 @@ export default function AdminDashboard() {
         <StatCard icon={Star} label="Avg Rating" value={`${avgRating}/5.0`} />
       </div>
 
+      {/* Real-Time Fleet Map */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapPin className="h-4 w-4" /> Live Fleet Map
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
+            <FleetMap />
+          </Suspense>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader><CardTitle className="text-base">Recent Bookings</CardTitle></CardHeader>
