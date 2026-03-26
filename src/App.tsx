@@ -39,6 +39,11 @@ const App = () => (
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/ticket" element={<ETicket />} />
             <Route path="/tracking" element={<DriverTracking />} />
+            <Route path="/driver" element={<DriverHome />} />
+            <Route path="/driver/trip/:id" element={<DriverTripDetail />} />
+            <Route path="/driver/trips" element={<DriverTrips />} />
+            <Route path="/driver/passengers" element={<DriverPassengers />} />
+            <Route path="/driver/profile" element={<DriverProfile />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="drivers" element={<DriversManagement />} />
