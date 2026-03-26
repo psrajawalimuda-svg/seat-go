@@ -67,6 +67,7 @@ export default function Checkout() {
       await updateSeats.mutateAsync({ tripId: trip.id, bookedSeats: newSeats });
 
       setBooking({
+        id: trip.id,
         tripId: trip.id,
         pickupPoint,
         seatNumber: selectedSeat,

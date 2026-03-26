@@ -22,16 +22,17 @@ export interface Trip {
 }
 
 export interface Booking {
-  id: string;
+  id?: string;
   tripId: string;
   pickupPoint: PickupPoint;
   seatNumber: number;
   date: string;
-  destination: string;
+  destination?: string;
   totalPrice: number;
   passengerName: string;
   passengerPhone: string;
   status?: string;
+  bookedAt?: string;
 }
 
 export const DESTINATIONS = [
