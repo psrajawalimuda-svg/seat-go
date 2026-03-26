@@ -1,44 +1,76 @@
 
 
-# Enhanced E-Ticket Page
+# Maximize Mobile Phone Display for Driver & User
 
 ## Overview
-Improve the E-Ticket page with a proper QR code, richer trip details, share/download functionality, and polished mobile UI.
+Optimize the app layout so it uses the full phone screen width and feels native on mobile devices, while remaining centered on desktop/tablet. Currently `.mobile-container` uses `max-w-md` (448px) which is fine but could be expanded, and several mobile UX patterns need improvement.
 
 ## Changes
 
-### 1. Install QR Code Library
-Add `qrcode.react` to generate a real QR code from booking data instead of the current random pixel grid.
+### 1. Expand Container Width & Add Safe Areas (`src/index.css`)
+- Change `.mobile-container` from `max-w-md` to `max-w-[480px]` for slightly wider phone support
+- Add `viewport-fit=cover` support for notched phones
+- Add safe area padding utilities (`safe-bottom`, `safe-top`)
+- Ensure `ScreenHeader` and `BottomCTA` respect safe areas
 
-### 2. Rebuild `src/pages/ETicket.tsx`
+### 2. Update `index.html` Viewport Meta
+- Add `viewport-fit=cover` to the viewport meta tag for edge-to-edge display on notched phones
+- Update title to "ShuttleGo"
 
-**QR Code**: Generate a deterministic QR code encoding a JSON payload with `bookingId`, `tripId`, `seatNumber`, and `date`. Displayed in a styled container with the "Show this QR to the driver" label.
+### 3. Fix `ScreenHeader.tsx`
+- Add `safe-area-inset-top` padding so the header doesn't overlap the phone notch/status bar
 
-**Trip Details Card**: Expand the info section to include:
-- Route name with vehicle type badge
-- Date of travel
-- Pickup point (label + name)
-- Pickup time
-- Seat number
-- Passenger name (from booking context — currently not stored, will show date instead)
-- "Paid" status badge (already exists, keep)
+### 4. Fix `BottomCTA.tsx`
+- Add `pb-[env(safe-area-inset-bottom)]` so the bottom CTA avoids the home indicator on notched phones
 
-**Share/Download Buttons**: Add two action buttons below the ticket card:
-- **Share** — uses `navigator.share()` Web Share API (with fallback to clipboard copy) to share ticket details as text
-- **Download** — uses `html2canvas` or a simpler approach: generate a text summary and trigger download as a `.txt` file (no heavy dependency). Alternative: use `window.print()` targeting the ticket card for PDF-like output.
+### 5. Fix `DriverBottomNav.tsx`
+- Already has safe area spacer — verify it works with `viewport-fit=cover`
 
-**UI Polish**:
-- Ticket-style card with tear-line divider (keep existing dashed border + circle cutouts)
-- Booking reference ID displayed at top of card (use a short hash of trip+seat+date)
-- Subtle entrance animations (already present, refine timing)
+### 6. Optimize Touch Targets & Spacing (All Pages)
+- Ensure all interactive elements are at least 44px touch targets
+- Add `touch-action: manipulation` to prevent double-tap zoom on buttons
+- Add `-webkit-overflow-scrolling: touch` for smooth scrolling
 
-### 3. Add Booking Reference
-Generate a short booking reference code (e.g., `SG-XXXX`) from the booking data for display on the ticket. This is purely cosmetic — derived from a hash of tripId + seatNumber.
+### 7. User Pages Mobile Polish
+- **Home.tsx**: Adjust header padding for safe area top
+- **SearchResults.tsx**: Ensure trip cards use full width with proper padding
+- **SeatSelection.tsx**: Make seat grid responsive — scale seat size on smaller screens
+- **Checkout.tsx**: Ensure form inputs don't get obscured by keyboard (scroll into view)
+- **ETicket.tsx**: QR code and actions fill width properly
+- **DriverTracking.tsx**: Map height responsive to screen, bottom info card doesn't overlap
+
+### 8. Driver Pages Mobile Polish
+- **DriverHome.tsx**: Header gradient uses safe area top, stats grid fills width
+- **DriverTripDetail.tsx**: Map height adapts to screen, bottom CTA uses safe area
+- **DriverTrips.tsx**: Tab bar scrolls horizontally if needed
+- **DriverPassengers.tsx**: Passenger list items have proper touch targets
+- **DriverProfile.tsx**: Profile card and settings fill width
+
+### 9. Global CSS Enhancements (`src/index.css`)
+- Add `overscroll-behavior: none` to prevent pull-to-refresh interference
+- Add selection color for branded feel
+- Smooth scrolling behavior
+
+## Files Modified
+- `index.html` (viewport meta)
+- `src/index.css` (utilities, safe areas, touch optimizations)
+- `src/components/ScreenHeader.tsx`
+- `src/components/BottomCTA.tsx`
+- `src/components/driver/DriverBottomNav.tsx`
+- `src/pages/Home.tsx`
+- `src/pages/SeatSelection.tsx`
+- `src/pages/Checkout.tsx`
+- `src/pages/ETicket.tsx`
+- `src/pages/DriverTracking.tsx`
+- `src/pages/driver/DriverHome.tsx`
+- `src/pages/driver/DriverTripDetail.tsx`
+- `src/pages/driver/DriverTrips.tsx`
+- `src/pages/driver/DriverPassengers.tsx`
+- `src/pages/driver/DriverProfile.tsx`
 
 ## Technical Details
-- Install: `qrcode.react`
-- Modified file: `src/pages/ETicket.tsx`
+- `viewport-fit=cover` enables edge-to-edge rendering on iOS
+- `env(safe-area-inset-*)` CSS functions handle notch/home indicator spacing
 - No database changes needed
-- Share API has graceful fallback for unsupported browsers
-- Download uses `window.print()` with a print-specific CSS media query for clean output
+- No new dependencies
 
