@@ -1,21 +1,27 @@
 import { useState } from "react";
-import { MOCK_BOOKINGS, BookingRecord } from "@/data/admin-data";
-import { MOCK_TRIPS, PICKUP_POINTS, formatPrice } from "@/data/shuttle-data";
+import { useBookings, useTrips, usePickupPoints, toTrip } from "@/hooks/use-supabase-data";
+import { formatPrice } from "@/data/shuttle-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 export default function BookingsManagement() {
-  const [bookings, setBookings] = useState<BookingRecord[]>(MOCK_BOOKINGS);
+  const { data: bookings = [], isLoading, updateStatus } = useBookings();
+  const { data: dbTrips = [] } = useTrips();
+  const { data: pickupPoints = [] } = usePickupPoints();
   const [filter, setFilter] = useState<"all" | "paid" | "completed" | "cancelled">("all");
   const [search, setSearch] = useState("");
 
+  const trips = dbTrips.map(toTrip);
+
   const filtered = bookings
     .filter(b => filter === "all" || b.status === filter)
-    .filter(b => b.passengerName.toLowerCase().includes(search.toLowerCase()));
+    .filter(b => b.passenger_name.toLowerCase().includes(search.toLowerCase()));
 
   const statusColor: Record<string, string> = {
     paid: "bg-primary/10 text-primary border-primary/20",
@@ -23,13 +29,16 @@ export default function BookingsManagement() {
     cancelled: "bg-destructive/10 text-destructive border-destructive/20",
   };
 
-  const toggleStatus = (id: string) => {
-    setBookings(prev => prev.map(b => {
-      if (b.id !== id) return b;
-      const next = b.status === "paid" ? "completed" : b.status === "completed" ? "cancelled" : "paid";
-      return { ...b, status: next as BookingRecord["status"] };
-    }));
+  const toggleStatus = async (id: string, current: string) => {
+    const next = current === "paid" ? "completed" : current === "completed" ? "cancelled" : "paid";
+    try {
+      await updateStatus.mutateAsync({ id, status: next });
+    } catch {
+      toast.error("Failed to update status");
+    }
   };
+
+  if (isLoading) return <Skeleton className="h-64" />;
 
   return (
     <div className="space-y-4">
@@ -43,9 +52,7 @@ export default function BookingsManagement() {
 
       <div className="flex gap-2">
         {(["all", "paid", "completed", "cancelled"] as const).map(s => (
-          <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)} className="capitalize">
-            {s}
-          </Button>
+          <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)} className="capitalize">{s}</Button>
         ))}
       </div>
 
@@ -65,27 +72,23 @@ export default function BookingsManagement() {
             </TableHeader>
             <TableBody>
               {filtered.map((b) => {
-                const trip = MOCK_TRIPS.find(t => t.id === b.tripId);
-                const pickup = PICKUP_POINTS.find(p => p.id === b.pickupPointId);
+                const trip = trips.find(t => t.id === b.trip_id);
+                const pickup = pickupPoints.find(p => p.id === b.pickup_point_id);
                 return (
                   <TableRow key={b.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{b.passengerName}</p>
-                        <p className="text-xs text-muted-foreground">{b.passengerPhone}</p>
+                        <p className="font-medium">{b.passenger_name}</p>
+                        <p className="text-xs text-muted-foreground">{b.passenger_phone}</p>
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">{trip?.routeName}</TableCell>
                     <TableCell className="text-sm">{pickup?.label}</TableCell>
-                    <TableCell>#{b.seatNumber}</TableCell>
-                    <TableCell>{formatPrice(b.totalPrice)}</TableCell>
+                    <TableCell>#{b.seat_number}</TableCell>
+                    <TableCell>{formatPrice(b.total_price)}</TableCell>
                     <TableCell className="text-sm">{b.date}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`cursor-pointer ${statusColor[b.status]}`}
-                        onClick={() => toggleStatus(b.id)}
-                      >
+                      <Badge variant="outline" className={`cursor-pointer ${statusColor[b.status]}`} onClick={() => toggleStatus(b.id, b.status)}>
                         {b.status}
                       </Badge>
                     </TableCell>

@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Clock, Users, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Trip, formatPrice } from "@/data/shuttle-data";
-import { MOCK_BOOKINGS } from "@/data/admin-data";
+import { useBookings } from "@/hooks/use-supabase-data";
 
 interface TripCardProps {
   trip: Trip;
@@ -12,8 +12,9 @@ interface TripCardProps {
 
 export function TripCard({ trip, status = "upcoming" }: TripCardProps) {
   const navigate = useNavigate();
-  const passengers = MOCK_BOOKINGS.filter(
-    (b) => b.tripId === trip.id && b.status !== "cancelled"
+  const { data: allBookings = [] } = useBookings();
+  const passengers = allBookings.filter(
+    (b) => b.trip_id === trip.id && b.status !== "cancelled"
   ).length;
 
   const statusConfig = {
