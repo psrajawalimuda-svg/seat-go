@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { User } from "lucide-react";
+import { User, Package, CircleDot } from "lucide-react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { BottomCTA } from "@/components/BottomCTA";
 import { useBooking } from "@/context/BookingContext";
-import { formatPrice } from "@/data/shuttle-data";
+import { formatPrice, VEHICLE_LAYOUTS, CellType } from "@/data/shuttle-data";
 import { useTrips, toTrip } from "@/hooks/use-supabase-data";
 import { SkeletonCard } from "@/components/SkeletonCard";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ function SeatIcon({ status, number, onSelect }: { status: SeatStatus; number: nu
       onClick={status !== "booked" ? onSelect : undefined}
       disabled={status === "booked"}
       className={cn(
-        "w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold transition-colors relative",
+        "w-14 h-14 rounded-xl flex items-center justify-center text-sm font-bold transition-colors relative",
         status === "available" && "bg-primary-light text-primary border-2 border-primary/20 tap-highlight",
         status === "selected" && "shuttle-gradient text-primary-foreground shadow-md animate-seat-pop",
         status === "booked" && "bg-muted text-muted-foreground/40 cursor-not-allowed"
@@ -27,6 +27,25 @@ function SeatIcon({ status, number, onSelect }: { status: SeatStatus; number: nu
     >
       {status === "booked" ? <User className="w-4 h-4" /> : number}
     </motion.button>
+  );
+}
+
+function DriverCell() {
+  return (
+    <div className="w-14 h-14 rounded-xl bg-muted border-2 border-border flex items-center justify-center">
+      <CircleDot className="w-6 h-6 text-muted-foreground" />
+    </div>
+  );
+}
+
+function BaggageRow({ isRoof }: { isRoof?: boolean }) {
+  return (
+    <div className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted/50 border-2 border-dashed border-border">
+      <Package className="w-4 h-4 text-muted-foreground" />
+      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        {isRoof ? "Baggage Roof" : "Baggage"}
+      </span>
+    </div>
   );
 }
 
@@ -48,8 +67,8 @@ export default function SeatSelection() {
     );
   }
 
-  const cols = trip.totalSeats <= 12 ? 3 : 4;
-  const rows = Math.ceil(trip.totalSeats / cols);
+  const layout = VEHICLE_LAYOUTS[trip.vehicleType] || VEHICLE_LAYOUTS.hiace;
+  let seatCounter = 0;
 
   const getSeatStatus = (num: number): SeatStatus => {
     if (trip.bookedSeats.includes(num)) return "booked";
@@ -61,37 +80,60 @@ export default function SeatSelection() {
     if (selectedSeat) navigate("/checkout");
   };
 
+  // Pre-compute seat numbers for the layout
+  const rowsWithSeats = layout.rows.map((row) =>
+    row.map((cell) => {
+      if (cell === "seat") {
+        seatCounter++;
+        return { cell, seatNum: seatCounter };
+      }
+      return { cell, seatNum: 0 };
+    })
+  );
+
   return (
     <div className="mobile-container min-h-screen bg-background pb-28">
       <ScreenHeader title="Choose Your Seat" />
       <div className="px-4 py-4 space-y-5">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="shuttle-card-elevated">
-          <div className="flex items-center gap-2 mb-5 pb-3 border-b border-border/50">
-            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-              <svg className="w-5 h-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" /><path d="M12 8v8M8 12h8" />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold text-muted-foreground">Driver</span>
-            <div className="ml-auto text-xs text-muted-foreground">Front</div>
+          {/* Vehicle type label */}
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
+            <span className="text-sm font-semibold text-muted-foreground">{layout.label}</span>
+            <div className="ml-auto text-xs text-muted-foreground">Front ↑</div>
           </div>
+
           <div className="flex flex-col items-center gap-2.5">
-            {Array.from({ length: rows }).map((_, row) => (
-              <div key={row} className="flex gap-2.5 items-center">
-                {Array.from({ length: cols }).map((_, col) => {
-                  const seatNum = row * cols + col + 1;
-                  if (seatNum > trip.totalSeats) return <div key={col} className="w-12 h-12" />;
-                  const isAfterAisle = cols === 4 && col === 2;
-                  return (
-                    <div key={col} className={cn("flex", isAfterAisle && "ml-4")}>
-                      <SeatIcon number={seatNum} status={getSeatStatus(seatNum)} onSelect={() => setSelectedSeat(selectedSeat === seatNum ? null : seatNum)} />
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+            {rowsWithSeats.map((row, rowIdx) => {
+              // Check if this is a baggage row
+              const isBaggage = row.every((c) => c.cell === "baggage" || c.cell === "baggage_roof");
+              if (isBaggage) {
+                return <BaggageRow key={rowIdx} isRoof={row[0].cell === "baggage_roof"} />;
+              }
+
+              return (
+                <div key={rowIdx} className="flex gap-2.5 items-center">
+                  {row.map((item, colIdx) => {
+                    if (item.cell === "driver") return <DriverCell key={colIdx} />;
+                    if (item.cell === "empty") return <div key={colIdx} className="w-14 h-14" />;
+                    if (item.cell === "seat") {
+                      return (
+                        <SeatIcon
+                          key={colIdx}
+                          number={item.seatNum}
+                          status={getSeatStatus(item.seatNum)}
+                          onSelect={() => setSelectedSeat(selectedSeat === item.seatNum ? null : item.seatNum)}
+                        />
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              );
+            })}
           </div>
         </motion.div>
+
+        {/* Legend */}
         <div className="flex items-center justify-center gap-5">
           {[
             { color: "bg-primary-light border-2 border-primary/20", label: "Available" },
@@ -104,6 +146,8 @@ export default function SeatSelection() {
             </div>
           ))}
         </div>
+
+        {/* Selection summary */}
         <AnimatePresence>
           {selectedSeat && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="shuttle-card bg-shuttle-success-light border-shuttle-success/20">
@@ -118,6 +162,7 @@ export default function SeatSelection() {
           )}
         </AnimatePresence>
       </div>
+
       <BottomCTA onClick={handleContinue} disabled={!selectedSeat} subtitle={selectedSeat ? `Seat #${selectedSeat} selected` : undefined}>
         Continue
       </BottomCTA>

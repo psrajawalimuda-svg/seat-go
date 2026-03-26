@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Pencil } from "lucide-react";
-import { formatPrice } from "@/data/shuttle-data";
+import { formatPrice, VEHICLE_LAYOUTS } from "@/data/shuttle-data";
 import { useTrips, useDrivers, toTrip, DbTrip } from "@/hooks/use-supabase-data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
