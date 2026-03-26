@@ -10,6 +10,7 @@ import { VoiceCommandLayer } from "@/components/driver/VoiceCommandLayer";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -18,6 +19,7 @@ import { TripActiveHeader } from "@/components/driver/trip-active/TripActiveHead
 import { TripActiveMapView } from "@/components/driver/trip-active/TripActiveMapView";
 import { TripActiveListView } from "@/components/driver/trip-active/TripActiveListView";
 import { LocationVerificationDialog } from "@/components/driver/trip-active/LocationVerificationDialog";
+import { PassengerVerification } from "@/components/driver/trip-active/PassengerVerification";
 
 // --- Custom Hooks ---
 import { useTripTracking } from "@/hooks/use-trip-tracking";
@@ -35,6 +37,7 @@ const DriverTripActive = () => {
   const { data: allPickupPoints = [], isLoading: isLoadingPoints } = usePickupPoints();
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [showPassengerCheck, setShowPassengerCheck] = useState(false);
 
   const [followBus, setFollowBus] = useState(true);
   const mapRef = useRef<L.Map | null>(null);
@@ -121,6 +124,12 @@ const DriverTripActive = () => {
       setShowLocationDialog(true);
       return;
     }
+    // Instead of automatically advancing, open passenger check
+    setShowPassengerCheck(true);
+  };
+
+  const handleFinishPassengerCheck = () => {
+    setShowPassengerCheck(false);
     if (isLastStop) {
       navigate("/driver");
       return;
@@ -128,8 +137,8 @@ const DriverTripActive = () => {
     playFeedback("success");
     nextStop();
     toast({
-      title: "Arrived at Stop",
-      description: `Arrived at ${stops[currentStopIndex].label}.`,
+      title: "Heading to Next Stop",
+      description: `Next destination: ${stops[currentStopIndex + 1]?.label || "End of Route"}.`,
     });
   };
 
@@ -246,8 +255,19 @@ const DriverTripActive = () => {
           setLocationVerified(true);
           setShowLocationDialog(false);
           toast({ title: "Location Confirmed" });
+          setShowPassengerCheck(true); // Open passenger check after location confirmed
         }}
       />
+
+      <AnimatePresence>
+        {showPassengerCheck && (
+          <PassengerVerification 
+            isOpen={showPassengerCheck} 
+            onClose={handleFinishPassengerCheck} 
+            stops={stops}
+          />
+        )}
+      </AnimatePresence>
 
       <VoiceCommandLayer onCommand={handleVoiceCommand} />
 
