@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, MapPin, Armchair, Clock, Bus, Share2, Printer, Calendar, Route, User, Phone, MessageCircle } from "lucide-react";
+import { CheckCircle2, MapPin, Armchair, Clock, Bus, Share2, Calendar, Route, User, Phone, MessageCircle, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,8 @@ import { formatPrice, getPickupTime } from "@/data/shuttle-data";
 import { useTrips, toTrip } from "@/hooks/use-supabase-data";
 import { SkeletonCard } from "@/components/SkeletonCard";
 import { toast } from "sonner";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 function generateRef(tripId: string, seat: number): string {
   let hash = 0;
@@ -67,7 +69,23 @@ export default function ETicket() {
     }
   };
 
-  const handlePrint = () => window.print();
+  const handleDownloadPDF = async () => {
+    const el = document.getElementById("ticket-card");
+    if (!el) return;
+    toast.loading("Generating PDF...", { id: "pdf" });
+    try {
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
+      const pdfW = pdf.internal.pageSize.getWidth() - 20;
+      const pdfH = (canvas.height / canvas.width) * pdfW;
+      pdf.addImage(imgData, "PNG", 10, 10, pdfW, pdfH);
+      pdf.save(`ShuttleGo-Ticket-${bookingRef}.pdf`);
+      toast.success("PDF downloaded!", { id: "pdf" });
+    } catch {
+      toast.error("Failed to generate PDF", { id: "pdf" });
+    }
+  };
 
   const handleWhatsApp = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(ticketText)}`;
@@ -156,8 +174,8 @@ export default function ETicket() {
             <Button variant="outline" onClick={handleShare} className="h-12 rounded-xl font-semibold gap-2">
               <Share2 className="w-4 h-4" /> Share
             </Button>
-            <Button variant="outline" onClick={handlePrint} className="h-12 rounded-xl font-semibold gap-2">
-              <Printer className="w-4 h-4" /> Print
+            <Button variant="outline" onClick={handleDownloadPDF} className="h-12 rounded-xl font-semibold gap-2">
+              <Download className="w-4 h-4" /> Save PDF
             </Button>
           </div>
           <Button onClick={() => navigate("/tracking")} className="w-full h-13 rounded-xl shuttle-gradient text-primary-foreground font-semibold" size="lg">
