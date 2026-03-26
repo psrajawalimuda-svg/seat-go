@@ -185,7 +185,7 @@ export default function DriverTripDetail() {
     upsert();
   }, [id, busIndex, currentStop, jitter, smoothPath]);
 
-
+  if (!trip) {
     navigate("/driver");
     return null;
   }
