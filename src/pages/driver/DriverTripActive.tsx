@@ -60,9 +60,15 @@ const DriverTripActive = () => {
     }
   }, [trackingError, toast]);
 
+  // Redirect if no active trip
+  useEffect(() => {
+    if (!activeTrip) {
+      navigate("/driver");
+    }
+  }, [activeTrip, navigate]);
+
   if (!activeTrip) {
-    navigate("/driver");
-    return null;
+    return null; // Render nothing while redirecting
   }
 
   if (isLoadingPoints) {

@@ -1,5 +1,6 @@
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Sun, CloudRain, Wind, Zap, Activity, LayoutList, Map as MapIcon, Users, Clock } from "lucide-react";
+import { ArrowLeft, Sun, CloudRain, Wind, Zap, Activity, LayoutList, Map as MapIcon, Users, Clock, MapPin } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { WeatherCondition, TrafficLevel } from "@/context/DriverContext";
@@ -39,7 +40,7 @@ const getTrafficColor = (level: TrafficLevel) => {
   }
 };
 
-export function TripActiveHeader({
+export const TripActiveHeader = React.memo(({
   routeName,
   isDrivingMode,
   weather,
@@ -52,7 +53,7 @@ export function TripActiveHeader({
   totalStops,
   totalPax,
   progressPercent,
-}: TripActiveHeaderProps) {
+}: TripActiveHeaderProps) => {
   const navigate = useNavigate();
 
   return (
@@ -154,4 +155,4 @@ export function TripActiveHeader({
       </div>
     </div>
   );
-}
+});

@@ -1,3 +1,4 @@
+import React from "react";
 import { MapContainer, TileLayer, Polyline, Marker, Popup } from "react-leaflet";
 import { Navigation, Plus, Minus, Clock, Brain, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,7 @@ interface TripActiveMapViewProps {
   mapRef: React.MutableRefObject<L.Map | null>;
 }
 
-export function TripActiveMapView({
+export const TripActiveMapView = React.memo(({
   currentPos,
   bearing,
   speed,
@@ -36,7 +37,7 @@ export function TripActiveMapView({
   etaAdjustment,
   scheduleDeviation,
   mapRef,
-}: TripActiveMapViewProps) {
+}: TripActiveMapViewProps) => {
   const currentStop = stops[currentStopIndex];
 
   return (
@@ -172,4 +173,4 @@ export function TripActiveMapView({
       </div>
     </div>
   );
-}
+});

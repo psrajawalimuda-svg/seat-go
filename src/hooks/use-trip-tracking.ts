@@ -22,13 +22,40 @@ export function useTripTracking({
   const lastPosRef = useRef<[number, number] | null>(null);
 
   useEffect(() => {
-    if (!activeTrip || !("geolocation" in navigator)) {
-      if (!("geolocation" in navigator)) {
-        setError("Geolocation is not supported by your browser");
-      }
-      return;
+    if (!activeTrip) return;
+
+    // --- Geolocation is not available or not secure, start simulation ---
+    if (!("geolocation" in navigator) || window.location.protocol !== "https:" && window.location.hostname !== "localhost") {
+      setError("GPS not available. Running simulation.");
+      console.warn("Geolocation is not available or the origin is not secure. Starting location simulation.");
+
+      const simulationInterval = setInterval(() => {
+        setCurrentPos(prevPos => {
+          const newLat = (prevPos ? prevPos[0] : -6.200000) + (Math.random() - 0.5) * 0.0005;
+          const newLng = (prevPos ? prevPos[1] : 106.816666) + (Math.random() - 0.5) * 0.0005;
+          const newPos: [number, number] = [newLat, newLng];
+
+          if (lastPosRef.current) {
+            const dLon = ((newLng - lastPosRef.current[1]) * Math.PI) / 180;
+            const lat1 = (lastPosRef.current[0] * Math.PI) / 180;
+            const lat2 = (newLat * Math.PI) / 180;
+            const y = Math.sin(dLon) * Math.cos(lat2);
+            const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+            const b = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+            setBearing(b);
+          }
+          
+          setSpeed(Math.floor(Math.random() * (60 - 40 + 1)) + 40); // Random speed between 40-60 km/h
+          lastPosRef.current = newPos;
+          return newPos;
+        });
+      }, throttleMs);
+
+      return () => clearInterval(simulationInterval);
     }
 
+    // --- Real Geolocation Tracking ---
+    setError(null); // Clear previous errors
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, heading, speed: currentSpeed } = pos.coords;

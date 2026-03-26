@@ -1,3 +1,4 @@
+import React from "react";
 import { CheckCircle2, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,12 +9,12 @@ interface TripActiveListViewProps {
   scheduleDeviation: number;
 }
 
-export function TripActiveListView({
+export const TripActiveListView = React.memo(({
   stops,
   currentStopIndex,
   bookings,
   scheduleDeviation,
-}: TripActiveListViewProps) {
+}: TripActiveListViewProps) => {
   return (
     <div className="space-y-12 relative before:content-[''] before:absolute before:left-8 before:top-4 before:bottom-4 before:w-1.5 before:bg-muted-foreground/10">
       {stops.map((stop, index) => {
@@ -71,4 +72,4 @@ export function TripActiveListView({
       })}
     </div>
   );
-}
+});
