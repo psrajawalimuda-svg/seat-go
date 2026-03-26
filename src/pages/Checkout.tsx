@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { MapPin, Armchair, Clock, CreditCard, Wallet, QrCode } from "lucide-react";
+import { MapPin, Armchair, Clock, CreditCard, Wallet, QrCode, User, Phone } from "lucide-react";
 import { format } from "date-fns";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { BottomCTA } from "@/components/BottomCTA";
@@ -10,6 +10,7 @@ import { useTrips, useBookings, toTrip } from "@/hooks/use-supabase-data";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 
 const PAYMENT_METHODS = [
   { id: "ewallet", label: "E-Wallet", icon: Wallet, detail: "GoPay, OVO, Dana" },
@@ -22,6 +23,8 @@ export default function Checkout() {
   const { pickupPoint, destination, date, selectedTripId, selectedSeat, setBooking } = useBooking();
   const [paymentMethod, setPaymentMethod] = useState("ewallet");
   const [paying, setPaying] = useState(false);
+  const [passengerName, setPassengerName] = useState("");
+  const [passengerPhone, setPassengerPhone] = useState("");
   const { data: dbTrips } = useTrips();
   const { insert: insertBooking } = useBookings();
   const { updateSeats } = useTrips();
@@ -33,14 +36,24 @@ export default function Checkout() {
 
   const pickupTime = getPickupTime(trip.departureTime, pickupPoint);
 
+  const nameValid = passengerName.trim().length >= 2;
+  const phoneValid = /^(\+62|08)\d{8,12}$/.test(passengerPhone.replace(/\s/g, ""));
+  const formValid = nameValid && phoneValid;
+
   const handlePay = async () => {
+    if (!formValid) {
+      toast.error("Lengkapi nama dan nomor telepon");
+      return;
+    }
     setPaying(true);
     try {
-      // Insert booking record
+      const trimmedName = passengerName.trim().slice(0, 100);
+      const trimmedPhone = passengerPhone.replace(/\s/g, "").slice(0, 20);
+
       await insertBooking.mutateAsync({
         trip_id: trip.id,
-        passenger_name: "Penumpang",
-        passenger_phone: "+62800000000",
+        passenger_name: trimmedName,
+        passenger_phone: trimmedPhone,
         pickup_point_id: pickupPoint.id,
         seat_number: selectedSeat,
         date: format(date, "yyyy-MM-dd"),
@@ -48,7 +61,6 @@ export default function Checkout() {
         status: "paid",
       });
 
-      // Update booked seats on the trip
       const newSeats = [...trip.bookedSeats, selectedSeat];
       await updateSeats.mutateAsync({ tripId: trip.id, bookedSeats: newSeats });
 
@@ -59,6 +71,8 @@ export default function Checkout() {
         date: format(date, "yyyy-MM-dd"),
         destination,
         totalPrice: trip.basePrice,
+        passengerName: trimmedName,
+        passengerPhone: trimmedPhone,
       });
       navigate("/ticket");
     } catch (e) {
@@ -72,7 +86,36 @@ export default function Checkout() {
     <div className="mobile-container min-h-screen bg-background pb-28">
       <ScreenHeader title="Checkout" />
       <div className="px-4 py-4 space-y-4">
+        {/* Passenger info */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="shuttle-card-elevated space-y-4">
+          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Passenger Details</h3>
+          <div className="space-y-3">
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Full name"
+                value={passengerName}
+                onChange={(e) => setPassengerName(e.target.value)}
+                maxLength={100}
+                className="pl-10 h-12 rounded-xl"
+              />
+            </div>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Phone (08xx or +62xx)"
+                value={passengerPhone}
+                onChange={(e) => setPassengerPhone(e.target.value)}
+                maxLength={20}
+                type="tel"
+                className="pl-10 h-12 rounded-xl"
+              />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Booking summary */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="shuttle-card-elevated space-y-4">
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Booking Summary</h3>
           <div className="space-y-3">
             {[
@@ -95,6 +138,7 @@ export default function Checkout() {
           </div>
         </motion.div>
 
+        {/* Route */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="shuttle-card">
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Route</h3>
           <div className="flex items-center gap-1 overflow-x-auto pb-2">
@@ -116,7 +160,8 @@ export default function Checkout() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="shuttle-card-elevated space-y-3">
+        {/* Payment method */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="shuttle-card-elevated space-y-3">
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Payment Method</h3>
           {PAYMENT_METHODS.map((method) => {
             const Icon = method.icon;
@@ -145,7 +190,7 @@ export default function Checkout() {
           })}
         </motion.div>
       </div>
-      <BottomCTA onClick={handlePay} disabled={paying} subtitle={formatPrice(trip.basePrice)}>
+      <BottomCTA onClick={handlePay} disabled={paying || !formValid} subtitle={formatPrice(trip.basePrice)}>
         {paying ? "Processing..." : "Pay Now"}
       </BottomCTA>
     </div>

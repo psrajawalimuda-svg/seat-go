@@ -26,6 +26,8 @@ export interface Booking {
   date: string;
   destination: string;
   totalPrice: number;
+  passengerName: string;
+  passengerPhone: string;
 }
 
 export const DESTINATIONS = [

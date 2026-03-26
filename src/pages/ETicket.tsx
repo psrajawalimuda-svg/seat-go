@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, MapPin, Armchair, Clock, Bus, Share2, Printer, Calendar, Route } from "lucide-react";
+import { CheckCircle2, MapPin, Armchair, Clock, Bus, Share2, Printer, Calendar, Route, User, Phone } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
