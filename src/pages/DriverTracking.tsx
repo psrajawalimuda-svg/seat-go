@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Phone, Navigation, Bus, MapPin, Clock } from "lucide-react";
@@ -6,16 +6,68 @@ import { Button } from "@/components/ui/button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useBooking } from "@/context/BookingContext";
 import { MOCK_TRIPS, getPickupTime } from "@/data/shuttle-data";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+// Custom icons
+const busIcon = L.divIcon({
+  className: "",
+  html: `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,hsl(217,91%,50%),hsl(217,91%,60%));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,99,235,0.4)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></svg>
+  </div>`,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+});
+
+const pickupIcon = L.divIcon({
+  className: "",
+  html: `<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,hsl(152,69%,45%),hsl(152,69%,55%));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(34,197,94,0.4)">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+  </div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
+
+// Simulated route coords (Bandung area)
+const ROUTE_COORDS: [number, number][] = [
+  [-6.9175, 107.6091],
+  [-6.9180, 107.6120],
+  [-6.9185, 107.6150],
+  [-6.9190, 107.6180],
+  [-6.9192, 107.6210],
+  [-6.9195, 107.6240],
+  [-6.9198, 107.6270],
+  [-6.9200, 107.6300],
+  [-6.9203, 107.6330],
+  [-6.9205, 107.6360],
+];
+
+const PICKUP_COORD: [number, number] = [-6.9205, 107.6360];
+
+function AnimatedBusMarker({ progress }: { progress: number }) {
+  const map = useMap();
+  const idx = Math.min(Math.floor(progress * (ROUTE_COORDS.length - 1)), ROUTE_COORDS.length - 1);
+  const pos = ROUTE_COORDS[idx];
+
+  useEffect(() => {
+    map.setView(pos, map.getZoom(), { animate: true, duration: 1 });
+  }, [pos, map]);
+
+  return <Marker position={pos} icon={busIcon}><Popup>🚌 Driver is here</Popup></Marker>;
+}
 
 export default function DriverTracking() {
   const navigate = useNavigate();
   const { booking } = useBooking();
   const trip = MOCK_TRIPS.find((t) => t.id === booking?.tripId);
   const [eta, setEta] = useState(8);
+  const [progress, setProgress] = useState(0.2);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setEta((prev) => Math.max(1, prev - 1));
+      setProgress((prev) => Math.min(0.95, prev + 0.08));
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -23,59 +75,37 @@ export default function DriverTracking() {
   if (!booking || !trip) { navigate("/"); return null; }
 
   const pickupTime = getPickupTime(trip.departureTime, booking.pickupPoint);
+  const center: [number, number] = [-6.9190, 107.6220];
 
   return (
     <div className="mobile-container min-h-screen bg-background">
       <ScreenHeader title="Track Driver" />
 
       <div className="px-4 py-4 space-y-4">
-        {/* Map placeholder */}
+        {/* Leaflet Map */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="h-64 rounded-2xl bg-primary-light relative overflow-hidden"
+          className="h-72 rounded-2xl overflow-hidden shadow-lg border border-border/50"
         >
-          {/* Simulated map */}
-          <div className="absolute inset-0 opacity-30">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="absolute border-t border-primary/20" style={{ top: `${(i + 1) * 12}%`, left: 0, right: 0 }} />
-            ))}
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="absolute border-l border-primary/20" style={{ left: `${(i + 1) * 16}%`, top: 0, bottom: 0 }} />
-            ))}
-          </div>
-
-          {/* Route line */}
-          <div className="absolute top-1/2 left-[15%] right-[20%] h-1 bg-primary/30 rounded-full">
-            <motion.div
-              initial={{ width: "30%" }}
-              animate={{ width: `${Math.min(90, 100 - eta * 8)}%` }}
-              transition={{ duration: 2 }}
-              className="h-full shuttle-gradient rounded-full"
-            />
-          </div>
-
-          {/* Driver marker */}
-          <motion.div
-            initial={{ left: "25%" }}
-            animate={{ left: `${Math.min(70, 80 - eta * 5)}%` }}
-            transition={{ duration: 2 }}
-            className="absolute top-1/2 -translate-y-1/2"
+          <MapContainer
+            center={center}
+            zoom={14}
+            scrollWheelZoom={false}
+            zoomControl={false}
+            attributionControl={false}
+            style={{ height: "100%", width: "100%" }}
           >
-            <div className="relative">
-              <div className="w-10 h-10 rounded-full shuttle-gradient flex items-center justify-center shadow-lg">
-                <Bus className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-2 bg-primary/20 rounded-full blur-sm" />
-            </div>
-          </motion.div>
-
-          {/* Pickup marker */}
-          <div className="absolute top-1/2 right-[18%] -translate-y-1/2">
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-              <MapPin className="w-4 h-4 text-secondary-foreground" />
-            </div>
-          </div>
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <Polyline
+              positions={ROUTE_COORDS}
+              pathOptions={{ color: "hsl(217, 91%, 50%)", weight: 4, opacity: 0.6, dashArray: "8 8" }}
+            />
+            <AnimatedBusMarker progress={progress} />
+            <Marker position={PICKUP_COORD} icon={pickupIcon}>
+              <Popup>📍 Your pickup point</Popup>
+            </Marker>
+          </MapContainer>
         </motion.div>
 
         {/* ETA card */}
