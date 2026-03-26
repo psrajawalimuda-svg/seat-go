@@ -4,6 +4,7 @@ export interface PickupPoint {
   name: string;
   order: number;
   minutesFromStart: number;
+  coords: [number, number];
 }
 
 export interface Trip {
