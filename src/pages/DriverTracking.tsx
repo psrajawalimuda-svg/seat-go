@@ -5,7 +5,7 @@ import { Phone, Navigation, Bus, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useBooking } from "@/context/BookingContext";
-import { MOCK_TRIPS, getPickupTime } from "@/data/shuttle-data";
+import { MOCK_TRIPS, getPickupTime, PICKUP_POINTS } from "@/data/shuttle-data";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -29,21 +29,16 @@ const pickupIcon = L.divIcon({
   iconAnchor: [16, 16],
 });
 
-// Simulated route coords (Bandung area)
-const ROUTE_COORDS: [number, number][] = [
-  [-6.9175, 107.6091],
-  [-6.9180, 107.6120],
-  [-6.9185, 107.6150],
-  [-6.9190, 107.6180],
-  [-6.9192, 107.6210],
-  [-6.9195, 107.6240],
-  [-6.9198, 107.6270],
-  [-6.9200, 107.6300],
-  [-6.9203, 107.6330],
-  [-6.9205, 107.6360],
-];
+// Route coords derived from all pickup points
+const ROUTE_COORDS = PICKUP_POINTS.map((p) => p.coords);
 
-const PICKUP_COORD: [number, number] = [-6.9205, 107.6360];
+const makeStopIcon = (label: string, isSelected: boolean) =>
+  L.divIcon({
+    className: "",
+    html: `<div style="width:${isSelected ? 28 : 22}px;height:${isSelected ? 28 : 22}px;border-radius:50%;background:${isSelected ? "linear-gradient(135deg,hsl(152,69%,45%),hsl(152,69%,55%))" : "white"};border:2px solid ${isSelected ? "hsl(152,69%,40%)" : "hsl(217,91%,50%)"};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:${isSelected ? 10 : 8}px;font-weight:700;color:${isSelected ? "white" : "hsl(217,91%,50%)"};font-family:sans-serif">${label}</div>`,
+    iconSize: [isSelected ? 28 : 22, isSelected ? 28 : 22],
+    iconAnchor: [isSelected ? 14 : 11, isSelected ? 14 : 11],
+  });
 
 function AnimatedBusMarker({ progress }: { progress: number }) {
   const map = useMap();
@@ -75,7 +70,7 @@ export default function DriverTracking() {
   if (!booking || !trip) { navigate("/"); return null; }
 
   const pickupTime = getPickupTime(trip.departureTime, booking.pickupPoint);
-  const center: [number, number] = [-6.9190, 107.6220];
+  const center: [number, number] = [-6.9175, 107.6235];
 
   return (
     <div className="mobile-container min-h-screen bg-background">
@@ -90,7 +85,7 @@ export default function DriverTracking() {
         >
           <MapContainer
             center={center}
-            zoom={14}
+            zoom={13}
             scrollWheelZoom={false}
             zoomControl={false}
             attributionControl={false}
@@ -99,12 +94,21 @@ export default function DriverTracking() {
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <Polyline
               positions={ROUTE_COORDS}
-              pathOptions={{ color: "hsl(217, 91%, 50%)", weight: 4, opacity: 0.6, dashArray: "8 8" }}
+              pathOptions={{ color: "hsl(217, 91%, 50%)", weight: 4, opacity: 0.5, dashArray: "8 8" }}
             />
+            {PICKUP_POINTS.map((p) => (
+              <Marker
+                key={p.id}
+                position={p.coords}
+                icon={makeStopIcon(p.label, p.id === booking.pickupPoint.id)}
+              >
+                <Popup>
+                  <strong>{p.label}</strong> — {p.name}
+                  {p.id === booking.pickupPoint.id && <><br/>✅ Your pickup</>}
+                </Popup>
+              </Marker>
+            ))}
             <AnimatedBusMarker progress={progress} />
-            <Marker position={PICKUP_COORD} icon={pickupIcon}>
-              <Popup>📍 Your pickup point</Popup>
-            </Marker>
           </MapContainer>
         </motion.div>
 
