@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useBookings, useTrips, usePickupPoints, toTrip } from "@/hooks/use-supabase-data";
 import { formatPrice } from "@/data/shuttle-data";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import {
 import { 
   Search, Filter, CheckCircle2, XCircle, Clock, 
   MoreVertical, Download, Printer, FileText,
-  Calendar, User, MapPin
+  Calendar, User, MapPin, Navigation, CheckSquare, Square
 } from "lucide-react";
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator 
@@ -21,6 +21,9 @@ import { toast } from "sonner";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import { TicketPrint } from "@/components/admin/TicketPrint";
+import { useTicketPrint } from "@/hooks/use-ticket-print";
 
 export default function BookingsManagement() {
   const { data: bookings = [], isLoading, updateStatus } = useBookings();
@@ -31,6 +34,9 @@ export default function BookingsManagement() {
   const [search, setSearch] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const { isPrinting, printRef, handlePrint, handleExportPDF } = useTicketPrint();
 
   const trips = useMemo(() => dbTrips.map(toTrip), [dbTrips]);
 
@@ -42,6 +48,66 @@ export default function BookingsManagement() {
         b.id.toLowerCase().includes(search.toLowerCase())
       );
   }, [bookings, filter, search]);
+
+  const mapToTicketData = (booking: any) => {
+    const trip = trips.find(t => t.id === booking.trip_id);
+    const pickup = pickupPoints.find(p => p.id === booking.pickup_point_id);
+    return {
+      ...booking,
+      trip: {
+        routeName: trip?.routeName || "Unknown Route",
+        departureTime: trip?.departureTime || "--:--",
+        vehiclePlate: trip?.vehiclePlate || "----"
+      },
+      pickup: {
+        label: pickup?.label || "?",
+        name: pickup?.name || "Unknown Point"
+      }
+    };
+  };
+
+  const ticketsToPrint = useMemo(() => {
+    if (selectedBooking && detailsOpen) {
+      return [mapToTicketData(selectedBooking)];
+    }
+    if (selectedIds.length > 0) {
+      return selectedIds.map(id => {
+        const b = bookings.find(booking => booking.id === id);
+        return mapToTicketData(b);
+      });
+    }
+    return filtered.map(b => mapToTicketData(b));
+  }, [selectedBooking, detailsOpen, selectedIds, filtered, bookings, trips, pickupPoints]);
+
+  const handleBulkPrint = () => {
+    if (ticketsToPrint.length === 0) {
+      toast.error("No tickets to print");
+      return;
+    }
+    handlePrint(ticketsToPrint);
+  };
+
+  const handleBulkExport = () => {
+    if (ticketsToPrint.length === 0) {
+      toast.error("No tickets to export");
+      return;
+    }
+    handleExportPDF(ticketsToPrint);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filtered.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filtered.map(b => b.id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
 
   const statusConfig: Record<string, { label: string, color: string, icon: any }> = {
     paid: { label: "Paid", color: "bg-blue-500/10 text-blue-600 border-blue-200", icon: Clock },
@@ -74,6 +140,11 @@ export default function BookingsManagement() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
+      {/* Off-screen Print Container */}
+      <div className="opacity-0 pointer-events-none fixed -left-[9999px] top-0">
+        <TicketPrint ref={printRef} tickets={ticketsToPrint} />
+      </div>
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -81,11 +152,26 @@ export default function BookingsManagement() {
           <p className="text-sm text-muted-foreground font-bold uppercase tracking-widest">Real-time ticket management</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2 font-bold uppercase text-xs rounded-xl h-10 px-4">
-            <Printer className="h-4 w-4" /> Print All
+          {selectedIds.length > 0 && (
+            <Badge className="bg-primary text-white mr-2 px-3 py-1 rounded-full animate-in zoom-in">
+              {selectedIds.length} Selected
+            </Badge>
+          )}
+          <Button 
+            variant="outline" 
+            className="gap-2 font-bold uppercase text-xs rounded-xl h-10 px-4"
+            onClick={handleBulkPrint}
+            disabled={isPrinting}
+          >
+            <Printer className="h-4 w-4" /> {selectedIds.length > 0 ? "Print Selected" : "Print All"}
           </Button>
-          <Button variant="outline" className="gap-2 font-bold uppercase text-xs rounded-xl h-10 px-4">
-            <Download className="h-4 w-4" /> Export CSV
+          <Button 
+            variant="outline" 
+            className="gap-2 font-bold uppercase text-xs rounded-xl h-10 px-4"
+            onClick={handleBulkExport}
+            disabled={isPrinting}
+          >
+            <Download className="h-4 w-4" /> {selectedIds.length > 0 ? "Export Selected" : "Export PDF"}
           </Button>
         </div>
       </div>
@@ -125,6 +211,15 @@ export default function BookingsManagement() {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
+                <TableHead className="w-12 px-6">
+                  <Button variant="ghost" size="icon" onClick={toggleSelectAll} className="h-8 w-8">
+                    {selectedIds.length === filtered.length && filtered.length > 0 ? (
+                      <CheckSquare className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Square className="h-4 w-4 opacity-30" />
+                    )}
+                  </Button>
+                </TableHead>
                 <TableHead className="font-black uppercase text-[10px] tracking-widest px-6 py-4">Passenger</TableHead>
                 <TableHead className="font-black uppercase text-[10px] tracking-widest">Trip / Route</TableHead>
                 <TableHead className="font-black uppercase text-[10px] tracking-widest">Pickup & Seat</TableHead>
@@ -139,9 +234,25 @@ export default function BookingsManagement() {
                 const pickup = pickupPoints.find(p => p.id === b.pickup_point_id);
                 const config = statusConfig[b.status] || statusConfig.paid;
                 const StatusIcon = config.icon;
+                const isSelected = selectedIds.includes(b.id);
 
                 return (
-                  <TableRow key={b.id} className="hover:bg-muted/30 transition-colors group">
+                  <TableRow 
+                    key={b.id} 
+                    className={cn(
+                      "hover:bg-muted/30 transition-colors group",
+                      isSelected && "bg-primary/5"
+                    )}
+                  >
+                    <TableCell className="px-6">
+                      <Button variant="ghost" size="icon" onClick={() => toggleSelect(b.id)} className="h-8 w-8">
+                        {isSelected ? (
+                          <CheckSquare className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Square className="h-4 w-4 opacity-30" />
+                        )}
+                      </Button>
+                    </TableCell>
                     <TableCell className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black uppercase">
@@ -221,7 +332,7 @@ export default function BookingsManagement() {
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-40 text-center text-muted-foreground font-bold italic opacity-30">
+                  <TableCell colSpan={7} className="h-40 text-center text-muted-foreground font-bold italic opacity-30">
                     No bookings found matching your criteria.
                   </TableCell>
                 </TableRow>
@@ -239,8 +350,8 @@ export default function BookingsManagement() {
               <div className="bg-primary p-8 text-white">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Ticket Manifest</p>
-                    <h2 className="text-3xl font-black uppercase tracking-tighter italic">SG-{selectedBooking.id.slice(0, 6).toUpperCase()}</h2>
+                    <DialogDescription className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1 text-white">Ticket Manifest</DialogDescription>
+                    <DialogTitle className="text-3xl font-black uppercase tracking-tighter italic">SG-{selectedBooking.id.slice(0, 6).toUpperCase()}</DialogTitle>
                   </div>
                   <Badge className="bg-white/20 text-white border-0 font-black uppercase text-[10px] tracking-widest">
                     {selectedBooking.status}
@@ -299,7 +410,11 @@ export default function BookingsManagement() {
 
               <DialogFooter className="p-8 pt-0 gap-2">
                 <Button variant="outline" onClick={() => setDetailsOpen(false)} className="rounded-xl font-bold uppercase text-xs h-12 flex-1">Close</Button>
-                <Button className="shuttle-gradient rounded-xl font-black uppercase text-xs h-12 flex-1 gap-2">
+                <Button 
+                  className="shuttle-gradient rounded-xl font-black uppercase text-xs h-12 flex-1 gap-2"
+                  onClick={() => handlePrint([mapToTicketData(selectedBooking)])}
+                  disabled={isPrinting}
+                >
                   <Printer className="h-4 w-4" /> Print Ticket
                 </Button>
               </DialogFooter>

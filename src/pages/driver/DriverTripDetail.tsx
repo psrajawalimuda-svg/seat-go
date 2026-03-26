@@ -6,7 +6,8 @@ import {
   ArrowLeft, Calendar, Clock, MapPin, Users, User, 
   Phone, Mail, CheckCircle, XCircle, AlertCircle, 
   Printer, Download, Filter, Search, ChevronRight,
-  CreditCard, Info, Bus, FileText, ChevronDown, ChevronUp
+  CreditCard, Info, Bus, FileText, ChevronDown, ChevronUp,
+  Play
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";

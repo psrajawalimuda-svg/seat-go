@@ -16,10 +16,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { useBookings, useTrips, toTrip, DbBooking } from "@/hooks/use-supabase-data";
+import { useBookings, useTrips, toTrip, DbBooking, DbTrip } from "@/hooks/use-supabase-data";
 import { formatPrice } from "@/data/shuttle-data";
 import { SkeletonCard } from "@/components/SkeletonCard";
 import { useBooking } from "@/context/BookingContext";
+import { ReviewDialog } from "@/components/ReviewDialog";
 
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,10 @@ export default function UserDashboard() {
   const { setBooking } = useBooking();
   const { data: allBookings = [], isLoading: bookingsLoading } = useBookings();
   const { data: allTrips = [], isLoading: tripsLoading } = useTrips();
+
+  // Review states
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState<{ booking: DbBooking; trip: DbTrip } | null>(null);
 
   // In a real app, we'd filter by authenticated user ID.
   // For this demo, we'll "identify" the user by the last phone number used in a booking,
@@ -76,6 +81,11 @@ export default function UserDashboard() {
       bookedAt: booking.booked_at
     });
     navigate("/tracking");
+  };
+
+  const handleOpenReview = (booking: DbBooking, trip: DbTrip) => {
+    setSelectedBookingForReview({ booking, trip });
+    setReviewDialogOpen(true);
   };
 
   if (bookingsLoading || tripsLoading) {
@@ -223,9 +233,21 @@ export default function UserDashboard() {
                     </div>
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
                       <span className="text-xs font-bold text-foreground">{formatPrice(b.total_price)}</span>
-                      <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase gap-1 hover:bg-primary/5 hover:text-primary">
-                        Detail Trip <ChevronRight className="w-3 h-3" />
-                      </Button>
+                      <div className="flex gap-2">
+                        {b.status === "completed" && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7 text-[10px] font-bold uppercase gap-1 border-primary/20 text-primary hover:bg-primary hover:text-white transition-colors rounded-lg"
+                            onClick={() => trip && handleOpenReview(b, trip)}
+                          >
+                            <Star className="w-3 h-3 fill-current" /> Beri Rating
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase gap-1 hover:bg-primary/5 hover:text-primary">
+                          Detail Trip <ChevronRight className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -236,6 +258,15 @@ export default function UserDashboard() {
           </div>
         </section>
       </div>
+
+      {selectedBookingForReview && (
+        <ReviewDialog 
+          open={reviewDialogOpen} 
+          onOpenChange={setReviewDialogOpen} 
+          booking={selectedBookingForReview.booking} 
+          trip={selectedBookingForReview.trip} 
+        />
+      )}
 
       {/* Floating Bottom Contact */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[448px] bg-background border border-border shadow-2xl rounded-2xl p-3 flex items-center gap-3 z-30">

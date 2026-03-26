@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Bus, ClipboardList, MapPin } from "lucide-react";
+import { LayoutDashboard, Users, Bus, ClipboardList, MapPin, Star } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -20,6 +20,7 @@ const menuItems = [
   { title: "Trips", url: "/admin/trips", icon: Bus },
   { title: "Bookings", url: "/admin/bookings", icon: ClipboardList },
   { title: "Pickup Points", url: "/admin/pickup-points", icon: MapPin },
+  { title: "Reviews", url: "/admin/reviews", icon: Star },
 ];
 
 export function AdminSidebar() {

@@ -47,6 +47,18 @@ export interface DbBooking {
   booked_at: string;
 }
 
+export interface DbReview {
+  id: string;
+  booking_id: string;
+  trip_id: string;
+  driver_id: string;
+  passenger_name: string;
+  rating: number;
+  comment: string;
+  trip_date: string;
+  created_at: string;
+}
+
 export interface DbPickupPoint {
   id: string;
   label: string;
@@ -215,4 +227,42 @@ export function useBookings() {
   });
 
   return { ...query, insert, updateStatus };
+}
+
+export function useReviews() {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["reviews"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("*, trip:trips(*), driver:drivers(*)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as (DbReview & { trip: DbTrip; driver: DbDriver })[];
+    },
+  });
+
+  const insert = useMutation({
+    mutationFn: async (review: Omit<DbReview, "id" | "created_at">) => {
+      const { error } = await supabase.from("reviews").insert(review as any);
+      if (error) throw error;
+      
+      // Update driver rating (simulated)
+      if (review.driver_id && review.rating) {
+        // In a real trigger, this would update drivers.rating and drivers.total_trips (if total_reviews existed)
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reviews"] }),
+  });
+
+  const deleteReview = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("reviews").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reviews"] }),
+  });
+
+  return { ...query, insert, deleteReview };
 }

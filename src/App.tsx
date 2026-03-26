@@ -26,6 +26,7 @@ import DriversManagement from "./pages/admin/DriversManagement";
 import TripsManagement from "./pages/admin/TripsManagement";
 import BookingsManagement from "./pages/admin/BookingsManagement";
 import PickupPointsManagement from "./pages/admin/PickupPointsManagement";
+import ReviewsManagement from "./pages/admin/ReviewsManagement";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
                 <Route path="trips" element={<TripsManagement />} />
                 <Route path="bookings" element={<BookingsManagement />} />
                 <Route path="pickup-points" element={<PickupPointsManagement />} />
+                <Route path="reviews" element={<ReviewsManagement />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
