@@ -85,10 +85,10 @@ export default function SearchResults() {
                   <Button
                     onClick={() => handleSelect(trip.id)}
                     disabled={isFull}
-                    className={isFull
+                    className={`${isFull
                       ? "rounded-xl bg-muted text-muted-foreground"
                       : "rounded-xl shuttle-gradient text-primary-foreground font-semibold tap-highlight"
-                    }
+                    } touch-target`}
                   >
                     {isFull ? "Full" : "Select"}
                   </Button>

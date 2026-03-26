@@ -38,7 +38,7 @@ export default function DriverHome() {
 
   return (
     <div className="mobile-container bg-background pb-24">
-      <div className="shuttle-gradient px-5 pt-12 pb-8 rounded-b-3xl">
+      <div className="shuttle-gradient px-5 pt-12 pb-8 rounded-b-3xl safe-top">
         <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-primary-foreground/70 text-sm">Selamat pagi 👋</p>

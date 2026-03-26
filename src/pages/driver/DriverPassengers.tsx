@@ -67,7 +67,7 @@ export default function DriverPassengers() {
                   {passengers.map((p) => {
                     const boarded = boardedIds.has(p.id);
                     return (
-                      <div key={p.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${boarded ? "bg-secondary/10 border-secondary/30" : "bg-muted/30 border-border/50"}`}>
+                      <div key={p.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors min-h-[56px] ${boarded ? "bg-secondary/10 border-secondary/30" : "bg-muted/30 border-border/50"}`}>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{p.passenger_name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -75,11 +75,11 @@ export default function DriverPassengers() {
                             <span className="text-[10px] text-muted-foreground">Kursi {p.seat_number}</span>
                           </div>
                         </div>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg" onClick={() => window.open(`tel:${p.passenger_phone}`)}>
-                          <Phone className="w-3.5 h-3.5" />
+                        <Button size="icon" variant="ghost" className="h-10 w-10 rounded-lg touch-target" onClick={() => window.open(`tel:${p.passenger_phone}`)}>
+                          <Phone className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant={boarded ? "default" : "outline"} className={`h-8 w-8 rounded-lg ${boarded ? "shuttle-gradient-green text-secondary-foreground" : ""}`} onClick={() => toggleBoarded(p.id)}>
-                          {boarded ? <UserCheck className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                        <Button size="icon" variant={boarded ? "default" : "outline"} className={`h-10 w-10 rounded-lg touch-target ${boarded ? "shuttle-gradient-green text-secondary-foreground" : ""}`} onClick={() => toggleBoarded(p.id)}>
+                          {boarded ? <UserCheck className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                         </Button>
                       </div>
                     );

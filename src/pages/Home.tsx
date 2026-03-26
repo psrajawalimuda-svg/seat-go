@@ -27,7 +27,7 @@ export default function Home() {
 
   return (
     <div className="mobile-container min-h-screen bg-background">
-      <div className="shuttle-gradient px-5 pt-12 pb-10 rounded-b-[2rem]">
+      <div className="shuttle-gradient px-5 pt-12 pb-10 rounded-b-[2rem] safe-top">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2.5 mb-6">
           <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center">
             <Bus className="w-5 h-5 text-primary-foreground" />
@@ -130,7 +130,7 @@ export default function Home() {
           <Button
             onClick={handleSearch}
             disabled={!canSearch}
-            className="w-full h-13 text-base font-bold rounded-xl shuttle-gradient text-primary-foreground mt-2"
+            className="w-full h-14 text-base font-bold rounded-xl shuttle-gradient text-primary-foreground mt-2 touch-target"
             size="lg"
           >
             <Search className="w-4 h-4 mr-2" />
