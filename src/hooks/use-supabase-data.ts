@@ -17,6 +17,7 @@ export interface DbDriver {
   longitude?: number;
   bearing?: number;
   last_active?: string;
+  user_id?: string;
   created_at: string;
 }
 

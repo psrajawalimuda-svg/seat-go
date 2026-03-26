@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Star, Route, DollarSign, Bell, Globe, LogOut } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -5,12 +6,18 @@ import { Button } from "@/components/ui/button";
 import { DriverBottomNav } from "@/components/driver/DriverBottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useDrivers } from "@/hooks/use-supabase-data";
+import { useAuth } from "@/context/AuthContext";
 import { formatPrice } from "@/data/shuttle-data";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DriverProfile() {
   const { data: drivers, isLoading } = useDrivers();
-  const DRIVER = drivers?.[0];
+  const { user, profile, signOut } = useAuth();
+
+  const DRIVER = useMemo(() => {
+    if (!drivers || !user) return null;
+    return drivers.find(d => d.user_id === user.id) || drivers[0];
+  }, [drivers, user]);
 
   if (isLoading) {
     return (
@@ -35,8 +42,8 @@ export default function DriverProfile() {
           </div>
           <div className="flex-1">
             <h2 className="text-lg font-bold text-foreground">{DRIVER.name}</h2>
-            <p className="text-sm text-muted-foreground">{DRIVER.phone}</p>
-            <p className="text-xs text-muted-foreground">{DRIVER.plate}</p>
+            <p className="text-sm text-muted-foreground">{user?.email}</p>
+            <p className="text-xs text-muted-foreground">{DRIVER.phone} • {DRIVER.plate}</p>
           </div>
         </motion.div>
 
@@ -66,7 +73,11 @@ export default function DriverProfile() {
           </div>
         </div>
 
-        <Button variant="outline" className="w-full h-12 rounded-2xl border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
+        <Button 
+          variant="outline" 
+          className="w-full h-12 rounded-2xl border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          onClick={() => signOut()}
+        >
           <LogOut className="w-4 h-4 mr-2" /> Keluar
         </Button>
       </div>
