@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { MapPin, Navigation, CalendarDays, Bus, Search } from "lucide-react";
+import { MapPin, Navigation, CalendarDays, Bus, Search, User } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -36,6 +36,14 @@ export default function Home() {
             <h1 className="text-xl font-bold text-primary-foreground">ShuttleGo</h1>
             <p className="text-xs text-primary-foreground/70">Fast & reliable shuttle booking</p>
           </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="ml-auto text-white hover:bg-white/10 rounded-full"
+            onClick={() => navigate("/dashboard")}
+          >
+            <User className="w-5 h-5" />
+          </Button>
         </motion.div>
 
         <motion.h2

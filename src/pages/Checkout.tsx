@@ -50,6 +50,8 @@ export default function Checkout() {
       const trimmedName = passengerName.trim().slice(0, 100);
       const trimmedPhone = passengerPhone.replace(/\s/g, "").slice(0, 20);
 
+      localStorage.setItem("user_phone", trimmedPhone);
+
       await insertBooking.mutateAsync({
         trip_id: trip.id,
         passenger_name: trimmedName,

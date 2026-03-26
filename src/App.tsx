@@ -10,6 +10,7 @@ import SeatSelection from "./pages/SeatSelection";
 import Checkout from "./pages/Checkout";
 import ETicket from "./pages/ETicket";
 import DriverTracking from "./pages/DriverTracking";
+import UserDashboard from "./pages/UserDashboard";
 import NotFound from "./pages/NotFound";
 import DriverHome from "./pages/driver/DriverHome";
 import DriverTripDetail from "./pages/driver/DriverTripDetail";
@@ -31,7 +32,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BookingProvider>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<SearchResults />} />
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/ticket" element={<ETicket />} />
             <Route path="/tracking" element={<DriverTracking />} />
+            <Route path="/dashboard" element={<UserDashboard />} />
             <Route path="/driver" element={<DriverHome />} />
             <Route path="/driver/trip/:id" element={<DriverTripDetail />} />
             <Route path="/driver/trips" element={<DriverTrips />} />
