@@ -18,13 +18,13 @@ export default function TripsManagement() {
   const { data: drivers = [] } = useDrivers();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<DbTrip | null>(null);
-  const [form, setForm] = useState({ route_name: "", departure_time: "", base_price: "", total_seats: "16", driver_id: "" });
+  const [form, setForm] = useState({ route_name: "", departure_time: "", base_price: "", total_seats: "10", driver_id: "", vehicle_type: "hiace" });
 
   const trips = dbTrips.map(toTrip);
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ route_name: "", departure_time: "", base_price: "", total_seats: "16", driver_id: "" });
+    setForm({ route_name: "", departure_time: "", base_price: "", total_seats: "10", driver_id: "", vehicle_type: "hiace" });
     setDialogOpen(true);
   };
 
@@ -36,6 +36,7 @@ export default function TripsManagement() {
       base_price: String(t.base_price),
       total_seats: String(t.total_seats),
       driver_id: t.driver_id || "",
+      vehicle_type: t.vehicle_type || "hiace",
     });
     setDialogOpen(true);
   };
@@ -49,6 +50,7 @@ export default function TripsManagement() {
         base_price: Number(form.base_price),
         total_seats: Number(form.total_seats),
         driver_id: form.driver_id || null,
+        vehicle_type: form.vehicle_type,
       };
       if (editing) payload.id = editing.id;
       await upsert.mutateAsync(payload);
