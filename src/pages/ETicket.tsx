@@ -46,6 +46,8 @@ export default function ETicket() {
   const ticketText = [
     `ShuttleGo E-Ticket`,
     `Ref: ${bookingRef}`,
+    `Passenger: ${booking.passengerName || "—"}`,
+    `Phone: ${booking.passengerPhone || "—"}`,
     `Route: ${trip.routeName}`,
     `Date: ${booking.date}`,
     `Pickup: ${booking.pickupPoint.label} — ${booking.pickupPoint.name}`,
@@ -68,6 +70,8 @@ export default function ETicket() {
   const handlePrint = () => window.print();
 
   const details = [
+    { icon: <User className="w-4 h-4 text-primary" />, label: "Passenger", value: booking.passengerName || "—" },
+    { icon: <Phone className="w-4 h-4 text-primary" />, label: "Phone", value: booking.passengerPhone || "—" },
     { icon: <Route className="w-4 h-4 text-primary" />, label: "Route", value: trip.routeName },
     { icon: <Calendar className="w-4 h-4 text-primary" />, label: "Date", value: booking.date },
     { icon: <MapPin className="w-4 h-4 text-primary" />, label: "Pickup", value: `${booking.pickupPoint.label} — ${booking.pickupPoint.name}` },
