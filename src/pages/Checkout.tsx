@@ -5,9 +5,11 @@ import { format } from "date-fns";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { BottomCTA } from "@/components/BottomCTA";
 import { useBooking } from "@/context/BookingContext";
-import { MOCK_TRIPS, formatPrice, getPickupTime } from "@/data/shuttle-data";
+import { formatPrice, getPickupTime } from "@/data/shuttle-data";
+import { useTrips, useBookings, toTrip } from "@/hooks/use-supabase-data";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { toast } from "sonner";
 
 const PAYMENT_METHODS = [
   { id: "ewallet", label: "E-Wallet", icon: Wallet, detail: "GoPay, OVO, Dana" },
@@ -19,33 +21,59 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { pickupPoint, destination, date, selectedTripId, selectedSeat, setBooking } = useBooking();
   const [paymentMethod, setPaymentMethod] = useState("ewallet");
-  const trip = MOCK_TRIPS.find((t) => t.id === selectedTripId);
+  const [paying, setPaying] = useState(false);
+  const { data: dbTrips } = useTrips();
+  const { insert: insertBooking } = useBookings();
+  const { updateSeats } = useTrips();
+
+  const dbTrip = dbTrips?.find((t) => t.id === selectedTripId);
+  const trip = dbTrip ? toTrip(dbTrip) : null;
 
   if (!trip || !pickupPoint || !selectedSeat || !date) { navigate("/"); return null; }
 
   const pickupTime = getPickupTime(trip.departureTime, pickupPoint);
 
-  const handlePay = () => {
-    setBooking({
-      tripId: trip.id,
-      pickupPoint,
-      seatNumber: selectedSeat,
-      date: format(date, "yyyy-MM-dd"),
-      destination,
-      totalPrice: trip.basePrice,
-    });
-    navigate("/ticket");
+  const handlePay = async () => {
+    setPaying(true);
+    try {
+      // Insert booking record
+      await insertBooking.mutateAsync({
+        trip_id: trip.id,
+        passenger_name: "Penumpang",
+        passenger_phone: "+62800000000",
+        pickup_point_id: pickupPoint.id,
+        seat_number: selectedSeat,
+        date: format(date, "yyyy-MM-dd"),
+        total_price: trip.basePrice,
+        status: "paid",
+      });
+
+      // Update booked seats on the trip
+      const newSeats = [...trip.bookedSeats, selectedSeat];
+      await updateSeats.mutateAsync({ tripId: trip.id, bookedSeats: newSeats });
+
+      setBooking({
+        tripId: trip.id,
+        pickupPoint,
+        seatNumber: selectedSeat,
+        date: format(date, "yyyy-MM-dd"),
+        destination,
+        totalPrice: trip.basePrice,
+      });
+      navigate("/ticket");
+    } catch (e) {
+      toast.error("Pembayaran gagal, coba lagi");
+    } finally {
+      setPaying(false);
+    }
   };
 
   return (
     <div className="mobile-container min-h-screen bg-background pb-28">
       <ScreenHeader title="Checkout" />
-
       <div className="px-4 py-4 space-y-4">
-        {/* Booking summary */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="shuttle-card-elevated space-y-4">
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Booking Summary</h3>
-
           <div className="space-y-3">
             {[
               { icon: <MapPin className="w-4 h-4 text-primary" />, label: "Pickup", value: `${pickupPoint.label} — ${pickupPoint.name}` },
@@ -61,20 +89,13 @@ export default function Checkout() {
               </div>
             ))}
           </div>
-
           <div className="border-t border-border/50 pt-3 flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Total</span>
             <span className="text-xl font-extrabold text-foreground">{formatPrice(trip.basePrice)}</span>
           </div>
         </motion.div>
 
-        {/* Route visualization */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="shuttle-card"
-        >
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="shuttle-card">
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Route</h3>
           <div className="flex items-center gap-1 overflow-x-auto pb-2">
             {Array.from({ length: 5 }).map((_, i) => {
@@ -95,13 +116,7 @@ export default function Checkout() {
           </div>
         </motion.div>
 
-        {/* Payment methods */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="shuttle-card-elevated space-y-3"
-        >
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="shuttle-card-elevated space-y-3">
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Payment Method</h3>
           {PAYMENT_METHODS.map((method) => {
             const Icon = method.icon;
@@ -115,32 +130,23 @@ export default function Checkout() {
                   isSelected ? "border-primary bg-primary-light" : "border-border/50 bg-muted/30"
                 )}
               >
-                <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center",
-                  isSelected ? "shuttle-gradient" : "bg-muted"
-                )}>
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isSelected ? "shuttle-gradient" : "bg-muted")}>
                   <Icon className={cn("w-5 h-5", isSelected ? "text-primary-foreground" : "text-muted-foreground")} />
                 </div>
                 <div className="text-left flex-1">
-                  <p className={cn("text-sm font-semibold", isSelected ? "text-foreground" : "text-foreground")}>{method.label}</p>
+                  <p className="text-sm font-semibold text-foreground">{method.label}</p>
                   <p className="text-xs text-muted-foreground">{method.detail}</p>
                 </div>
-                <div className={cn(
-                  "w-5 h-5 rounded-full border-2",
-                  isSelected ? "border-primary bg-primary" : "border-border"
-                )}>
-                  {isSelected && <div className="w-full h-full rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                  </div>}
+                <div className={cn("w-5 h-5 rounded-full border-2", isSelected ? "border-primary bg-primary" : "border-border")}>
+                  {isSelected && <div className="w-full h-full rounded-full flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-primary-foreground" /></div>}
                 </div>
               </button>
             );
           })}
         </motion.div>
       </div>
-
-      <BottomCTA onClick={handlePay} subtitle={formatPrice(trip.basePrice)}>
-        Pay Now
+      <BottomCTA onClick={handlePay} disabled={paying} subtitle={formatPrice(trip.basePrice)}>
+        {paying ? "Processing..." : "Pay Now"}
       </BottomCTA>
     </div>
   );
