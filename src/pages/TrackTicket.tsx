@@ -31,11 +31,16 @@ export default function TrackTicket() {
       return;
     }
 
-    // Logic PoC: Mencari booking berdasarkan partial ID atau reference
-    // Dalam aplikasi nyata, ini akan memanggil API validasi tiket
+    // Generate reference code from booking for matching
+    const genRef = (id: string) => {
+      const hash = id.replace(/-/g, '').slice(0, 4).toUpperCase();
+      return `SG-${hash}`;
+    };
+
+    const query = ticketId.trim().toUpperCase();
     const booking = allBookings.find(b => 
       b.id.toLowerCase().includes(ticketId.toLowerCase()) || 
-      ticketId.toUpperCase().includes("SG-") // Simulation for SG-XXXX
+      genRef(b.id) === query
     );
 
     if (booking) {
