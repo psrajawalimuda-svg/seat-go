@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { MapPin, Navigation, CalendarDays, Bus, Search, User } from "lucide-react";
+import { MapPin, Navigation, CalendarDays, Bus, Search, User, Navigation2, History } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -144,6 +144,25 @@ export default function Home() {
             <Search className="w-4 h-4 mr-2" />
             Search Tickets
           </Button>
+
+          <div className="flex gap-3">
+            <Button 
+              variant="outline"
+              className="flex-1 h-12 rounded-xl border-2 border-primary/10 text-primary font-bold text-xs gap-2"
+              onClick={() => navigate("/track-ticket")}
+            >
+              <Navigation2 className="w-4 h-4" />
+              Lacak Driver
+            </Button>
+            <Button 
+              variant="outline"
+              className="flex-1 h-12 rounded-xl border-2 border-secondary/10 text-secondary font-bold text-xs gap-2"
+              onClick={() => navigate("/dashboard")}
+            >
+              <History className="w-4 h-4" />
+              Riwayat
+            </Button>
+          </div>
         </div>
       </motion.div>
 

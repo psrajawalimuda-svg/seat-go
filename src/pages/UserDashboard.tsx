@@ -21,6 +21,9 @@ import { formatPrice } from "@/data/shuttle-data";
 import { SkeletonCard } from "@/components/SkeletonCard";
 import { useBooking } from "@/context/BookingContext";
 
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+
 export default function UserDashboard() {
   const navigate = useNavigate();
   const { setBooking } = useBooking();
@@ -30,10 +33,24 @@ export default function UserDashboard() {
   // In a real app, we'd filter by authenticated user ID.
   // For this demo, we'll "identify" the user by the last phone number used in a booking,
   // or show all bookings if none found in local storage.
+  const [phoneInput, setPhoneInput] = useState("");
+  const [isAddingPhone, setIsAddingPhone] = useState(false);
+
   const userPhone = localStorage.getItem("user_phone") || "";
 
+  const handleSavePhone = () => {
+    if (phoneInput.length < 10) {
+      toast.error("Nomor telepon tidak valid");
+      return;
+    }
+    localStorage.setItem("user_phone", phoneInput);
+    setIsAddingPhone(false);
+    toast.success("Nomor telepon disimpan!");
+    window.location.reload();
+  };
+
   const userBookings = useMemo(() => {
-    if (!userPhone) return allBookings.slice(0, 3); // Demo: show first 3
+    if (!userPhone) return []; 
     return allBookings.filter(b => b.passenger_phone === userPhone);
   }, [allBookings, userPhone]);
 
@@ -83,13 +100,37 @@ export default function UserDashboard() {
             </div>
             <div>
               <p className="text-xs text-white/70 font-medium">Selamat datang,</p>
-              <h2 className="text-lg font-bold">Penumpang Setia</h2>
+              <h2 className="text-lg font-bold">{userPhone || "Penumpang Setia"}</h2>
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 rounded-full" onClick={() => navigate("/")}>
+          <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 rounded-full" onClick={() => {
+            localStorage.removeItem("user_phone");
+            navigate("/");
+          }}>
             <LogOut className="w-5 h-5" />
           </Button>
         </div>
+
+        {!userPhone && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/20 backdrop-blur-md rounded-2xl p-4 border border-white/20 mb-6"
+          >
+            <p className="text-xs font-bold mb-3">Masukkan nomor telepon untuk melihat tiket Anda</p>
+            <div className="flex gap-2">
+              <Input 
+                placeholder="0812..." 
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 h-10"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+              />
+              <Button size="sm" className="bg-white text-primary font-bold" onClick={handleSavePhone}>
+                Simpan
+              </Button>
+            </div>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">

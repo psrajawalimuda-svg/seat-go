@@ -10,6 +10,7 @@ import SeatSelection from "./pages/SeatSelection";
 import Checkout from "./pages/Checkout";
 import ETicket from "./pages/ETicket";
 import DriverTracking from "./pages/DriverTracking";
+import TrackTicket from "./pages/TrackTicket";
 import UserDashboard from "./pages/UserDashboard";
 import NotFound from "./pages/NotFound";
 import DriverHome from "./pages/driver/DriverHome";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/ticket" element={<ETicket />} />
             <Route path="/tracking" element={<DriverTracking />} />
+            <Route path="/track-ticket" element={<TrackTicket />} />
             <Route path="/dashboard" element={<UserDashboard />} />
             <Route path="/driver" element={<DriverHome />} />
             <Route path="/driver/trip/:id" element={<DriverTripDetail />} />
