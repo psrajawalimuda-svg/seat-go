@@ -6,7 +6,7 @@ import {
   Users, DollarSign, Navigation 
 } from "lucide-react";
 import { useDriver } from "@/context/DriverContext";
-import { useDrivers, useBookings, useTrips, toTrip } from "@/hooks/use-supabase-data";
+import { useDrivers, useBookings, useTrips, usePickupPoints, toTrip, toBooking } from "@/hooks/use-supabase-data";
 import { formatPrice } from "@/data/shuttle-data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,11 +27,12 @@ import { DriverBottomNav } from "@/components/driver/DriverBottomNav";
 
 export default function DriverHome() {
   const navigate = useNavigate();
-  const { isOnline, setIsOnline, setActiveTrip, isDrivingMode, setIsDrivingMode, playFeedback } = useDriver();
+  const { isOnline, setIsOnline, setActiveTrip, setBookings, isDrivingMode, setIsDrivingMode, playFeedback } = useDriver();
   
   const { data: drivers } = useDrivers();
   const { data: allBookings = [] } = useBookings();
   const { data: dbTrips, isLoading } = useTrips();
+  const { data: pickupPoints = [] } = usePickupPoints();
 
   const [showChecklist, setShowChecklist] = useState(false);
   const [checklist, setChecklist] = useState({
@@ -88,7 +89,12 @@ export default function DriverHome() {
     }
     if (assignedTrip) {
       setActiveTrip(assignedTrip);
-      navigate(`/driver/trip/${assignedTrip.id}`);
+      // Filter and convert bookings for this trip
+      const tripBookings = allBookings
+        .filter(b => b.trip_id === assignedTrip.id)
+        .map(b => toBooking(b, pickupPoints));
+      setBookings(tripBookings);
+      navigate(`/driver/trip/active`);
     }
   };
 
@@ -96,7 +102,11 @@ export default function DriverHome() {
     setShowChecklist(false);
     if (assignedTrip) {
       setActiveTrip(assignedTrip);
-      navigate(`/driver/trip/${assignedTrip.id}`);
+      const tripBookings = allBookings
+        .filter(b => b.trip_id === assignedTrip.id)
+        .map(b => toBooking(b, pickupPoints));
+      setBookings(tripBookings);
+      navigate(`/driver/trip/active`);
     }
   };
 

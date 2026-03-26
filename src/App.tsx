@@ -19,6 +19,7 @@ import DriverTripDetail from "./pages/driver/DriverTripDetail";
 import DriverTrips from "./pages/driver/DriverTrips";
 import DriverPassengers from "./pages/driver/DriverPassengers";
 import DriverProfile from "./pages/driver/DriverProfile";
+import DriverTripActive from "./pages/driver/DriverTripActive";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import DriversManagement from "./pages/admin/DriversManagement";
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/dashboard" element={<UserDashboard />} />
               <Route path="/driver" element={<DriverHome />} />
               <Route path="/driver/trip/:id" element={<DriverTripDetail />} />
+              <Route path="/driver/trip/active" element={<DriverTripActive />} />
               <Route path="/driver/trips" element={<DriverTrips />} />
               <Route path="/driver/passengers" element={<DriverPassengers />} />
               <Route path="/driver/profile" element={<DriverProfile />} />

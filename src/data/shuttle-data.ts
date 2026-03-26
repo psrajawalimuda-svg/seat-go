@@ -14,9 +14,11 @@ export interface Trip {
   basePrice: number;
   totalSeats: number;
   bookedSeats: number[];
+  driverId?: string;
   driverName: string;
   driverPhone: string;
   vehiclePlate: string;
+  vehicleType?: string;
 }
 
 export interface Booking {

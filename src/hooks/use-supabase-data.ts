@@ -73,9 +73,25 @@ export function toTrip(t: DbTrip) {
     totalSeats: t.total_seats,
     bookedSeats: t.booked_seats || [],
     vehicleType: t.vehicle_type || "hiace",
+    driverId: t.driver_id || "",
     driverName: t.driver?.name || "",
     driverPhone: t.driver?.phone || "",
     vehiclePlate: t.driver?.plate || "",
+  };
+}
+
+// Convert DbBooking to legacy Booking shape
+export function toBooking(b: DbBooking, pickupPoints: any[]) {
+  const pp = pickupPoints.find(p => p.id === b.pickup_point_id);
+  return {
+    tripId: b.trip_id,
+    pickupPoint: pp || { id: b.pickup_point_id, label: "Unknown", name: "Unknown", order: 0, minutesFromStart: 0, coords: [0, 0] },
+    seatNumber: b.seat_number,
+    date: b.date,
+    destination: "Unknown", // Destination is not in DbBooking but we can infer or leave
+    totalPrice: b.total_price,
+    passengerName: b.passenger_name,
+    passengerPhone: b.passenger_phone,
   };
 }
 
