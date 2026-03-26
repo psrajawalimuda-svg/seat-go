@@ -99,8 +99,14 @@ export type Database = {
       }
       drivers: {
         Row: {
+          bearing: number | null
           created_at: string
+          email: string | null
           id: string
+          last_active: string | null
+          latitude: number | null
+          license_number: string | null
+          longitude: number | null
           name: string
           phone: string
           plate: string
@@ -110,8 +116,14 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          bearing?: number | null
           created_at?: string
+          email?: string | null
           id?: string
+          last_active?: string | null
+          latitude?: number | null
+          license_number?: string | null
+          longitude?: number | null
           name: string
           phone: string
           plate: string
@@ -121,8 +133,14 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          bearing?: number | null
           created_at?: string
+          email?: string | null
           id?: string
+          last_active?: string | null
+          latitude?: number | null
+          license_number?: string | null
+          longitude?: number | null
           name?: string
           phone?: string
           plate?: string
