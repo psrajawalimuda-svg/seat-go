@@ -85,7 +85,7 @@ export default function DriverTracking() {
         >
           <MapContainer
             center={center}
-            zoom={14}
+            zoom={13}
             scrollWheelZoom={false}
             zoomControl={false}
             attributionControl={false}
@@ -94,12 +94,21 @@ export default function DriverTracking() {
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <Polyline
               positions={ROUTE_COORDS}
-              pathOptions={{ color: "hsl(217, 91%, 50%)", weight: 4, opacity: 0.6, dashArray: "8 8" }}
+              pathOptions={{ color: "hsl(217, 91%, 50%)", weight: 4, opacity: 0.5, dashArray: "8 8" }}
             />
+            {PICKUP_POINTS.map((p) => (
+              <Marker
+                key={p.id}
+                position={p.coords}
+                icon={makeStopIcon(p.label, p.id === booking.pickupPoint.id)}
+              >
+                <Popup>
+                  <strong>{p.label}</strong> — {p.name}
+                  {p.id === booking.pickupPoint.id && <><br/>✅ Your pickup</>}
+                </Popup>
+              </Marker>
+            ))}
             <AnimatedBusMarker progress={progress} />
-            <Marker position={PICKUP_COORD} icon={pickupIcon}>
-              <Popup>📍 Your pickup point</Popup>
-            </Marker>
           </MapContainer>
         </motion.div>
 
