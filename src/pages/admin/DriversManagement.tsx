@@ -94,8 +94,25 @@ export default function DriversManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
 
-  // Real-time position tracking (Simulation for this project)
-  // In real app, this would be handled by a Supabase realtime subscription
+  // Real-time position tracking and status updates
+  useEffect(() => {
+    const channel = supabase
+      .channel("drivers-all")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "drivers" },
+        (payload) => {
+          console.log("Realtime driver update:", payload);
+          qc.invalidateQueries({ queryKey: ["drivers"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
+
   const filteredDrivers = useMemo(() => {
     return drivers.filter(d => 
       d.name.toLowerCase().includes(searchQuery.toLowerCase()) || 

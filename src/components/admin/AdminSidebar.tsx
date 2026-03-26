@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Bus, ClipboardList, MapPin, Star, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Bus, ClipboardList, MapPin, Star, LogOut, User as UserIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -19,6 +19,7 @@ import {
 const menuItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Drivers", url: "/admin/drivers", icon: Users },
+  { title: "Users", url: "/admin/users", icon: UserIcon },
   { title: "Trips", url: "/admin/trips", icon: Bus },
   { title: "Bookings", url: "/admin/bookings", icon: ClipboardList },
   { title: "Pickup Points", url: "/admin/pickup-points", icon: MapPin },

@@ -12,7 +12,8 @@ import {
   Phone,
   MessageCircle,
   LogOut,
-  Star
+  Star,
+  Pencil
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,13 +23,17 @@ import { formatPrice } from "@/data/shuttle-data";
 import { SkeletonCard } from "@/components/SkeletonCard";
 import { useBooking } from "@/context/BookingContext";
 import { ReviewDialog } from "@/components/ReviewDialog";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function UserDashboard() {
   const navigate = useNavigate();
   const { setBooking } = useBooking();
+  const { user, profile, signOut, isLoading: authLoading } = useAuth();
   const { data: allBookings = [], isLoading: bookingsLoading } = useBookings();
   const { data: allTrips = [], isLoading: tripsLoading } = useTrips();
 
@@ -36,24 +41,32 @@ export default function UserDashboard() {
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<{ booking: DbBooking; trip: DbTrip } | null>(null);
 
-  // In a real app, we'd filter by authenticated user ID.
-  // For this demo, we'll "identify" the user by the last phone number used in a booking,
-  // or show all bookings if none found in local storage.
-  const [phoneInput, setPhoneInput] = useState("");
-  const [isAddingPhone, setIsAddingPhone] = useState(false);
+  // Profile edit states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editFullName, setEditFullName] = useState(profile?.full_name || "");
+  const [editPhone, setEditPhone] = useState(profile?.phone || "");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const userPhone = localStorage.getItem("user_phone") || "";
-
-  const handleSavePhone = () => {
-    if (phoneInput.length < 10) {
-      toast.error("Nomor telepon tidak valid");
-      return;
+  const handleUpdateProfile = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ full_name: editFullName, phone: editPhone })
+        .eq("id", user.id);
+      
+      if (error) throw error;
+      toast.success("Profil berhasil diperbarui!");
+      setIsEditingProfile(false);
+    } catch (err: any) {
+      toast.error("Gagal memperbarui profil: " + err.message);
+    } finally {
+      setIsSaving(false);
     }
-    localStorage.setItem("user_phone", phoneInput);
-    setIsAddingPhone(false);
-    toast.success("Nomor telepon disimpan!");
-    window.location.reload();
   };
+
+  const userPhone = profile?.phone || "";
 
   const userBookings = useMemo(() => {
     if (!userPhone) return []; 
@@ -89,7 +102,7 @@ export default function UserDashboard() {
     setReviewDialogOpen(true);
   };
 
-  if (bookingsLoading || tripsLoading) {
+  if (bookingsLoading || tripsLoading || authLoading) {
     return (
       <div className="mobile-container min-h-screen bg-background">
         <ScreenHeader title="My Dashboard" />
@@ -101,45 +114,81 @@ export default function UserDashboard() {
     );
   }
 
+  if (!user) {
+    navigate("/login");
+    return null;
+  }
+
   return (
     <div className="mobile-container min-h-screen bg-background pb-20">
       <div className="shuttle-gradient px-6 pt-12 pb-8 rounded-b-[40px] text-white">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
-              <UserIcon className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 overflow-hidden">
+              {profile?.full_name ? (
+                <span className="text-xl font-black">{profile.full_name[0]}</span>
+              ) : (
+                <UserIcon className="w-6 h-6 text-white" />
+              )}
             </div>
             <div>
               <p className="text-xs text-white/70 font-medium">Selamat datang,</p>
-              <h2 className="text-lg font-bold">{userPhone || "Penumpang Setia"}</h2>
+              <h2 className="text-lg font-bold">{profile?.full_name || user.email}</h2>
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 rounded-full" onClick={() => {
-            localStorage.removeItem("user_phone");
-            navigate("/");
-          }}>
-            <LogOut className="w-5 h-5" />
-          </Button>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 rounded-full" onClick={() => setIsEditingProfile(true)}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 rounded-full" onClick={() => signOut()}>
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
-        {!userPhone && (
+        {isEditingProfile && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/20 backdrop-blur-md rounded-2xl p-4 border border-white/20 mb-6 space-y-4"
+          >
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/70 px-1">Nama Lengkap</Label>
+              <Input 
+                value={editFullName} 
+                onChange={(e) => setEditFullName(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 h-10"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/70 px-1">No. Telepon</Label>
+              <Input 
+                value={editPhone} 
+                onChange={(e) => setEditPhone(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 h-10"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" className="flex-1 text-white border border-white/20" onClick={() => setIsEditingProfile(false)}>
+                Batal
+              </Button>
+              <Button size="sm" className="flex-1 bg-white text-primary font-bold" onClick={handleUpdateProfile} disabled={isSaving}>
+                {isSaving ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {!profile?.phone && !isEditingProfile && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white/20 backdrop-blur-md rounded-2xl p-4 border border-white/20 mb-6"
           >
-            <p className="text-xs font-bold mb-3">Masukkan nomor telepon untuk melihat tiket Anda</p>
-            <div className="flex gap-2">
-              <Input 
-                placeholder="0812..." 
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 h-10"
-                value={phoneInput}
-                onChange={(e) => setPhoneInput(e.target.value)}
-              />
-              <Button size="sm" className="bg-white text-primary font-bold" onClick={handleSavePhone}>
-                Simpan
-              </Button>
-            </div>
+            <p className="text-xs font-bold mb-3">Lengkapi profil Anda untuk melihat riwayat tiket</p>
+            <Button size="sm" className="w-full bg-white text-primary font-bold" onClick={() => setIsEditingProfile(true)}>
+              Lengkapi Profil
+            </Button>
           </motion.div>
         )}
 

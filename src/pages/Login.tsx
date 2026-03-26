@@ -46,10 +46,9 @@ export default function Login() {
       return;
     }
 
-    // No recognized role
-    await supabase.auth.signOut();
-    setError("Akun tidak memiliki akses. Hubungi administrator.");
-    setLoading(false);
+    // Default to passenger
+    toast.success("Login berhasil!");
+    navigate("/dashboard");
   };
 
   const handleSignup = async (e: React.FormEvent) => {

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useCallback } fr
 import { Trip, Booking } from "@/data/shuttle-data";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./AuthContext";
 
 // --- Enums and Types for Simulation ---
 export type TrafficLevel = "low" | "medium" | "high" | "rush_hour";
@@ -74,6 +75,7 @@ interface DriverType extends DriverState {
 const DriverContext = createContext<DriverType | undefined>(undefined);
 
 export function DriverProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [isDrivingMode, setIsDrivingMode] = useState(false);
@@ -95,6 +97,22 @@ export function DriverProvider({ children }: { children: ReactNode }) {
   const [difficulty, setDifficulty] = useState(2);
   const [scheduleDeviation, setScheduleDeviation] = useState(0);
   const [locationVerified, setLocationVerified] = useState(false);
+
+  const handleSetIsOnline = async (online: boolean) => {
+    setIsOnline(online);
+    if (user) {
+      try {
+        const { error } = await supabase
+          .from("drivers")
+          .update({ status: online ? "online" : "offline" } as any)
+          .eq("user_id", user.id);
+        
+        if (error) console.error("Error updating driver status:", error);
+      } catch (err) {
+        console.error("Failed to update driver status:", err);
+      }
+    }
+  };
 
   const playFeedback = useCallback((type: "success" | "error" | "action") => {
     console.log(`[Audio Feedback] ${type}`);
@@ -248,7 +266,7 @@ export function DriverProvider({ children }: { children: ReactNode }) {
         isDrivingMode,
         voiceActive,
         setActiveTrip: handleSetActiveTrip,
-        setIsOnline,
+        setIsOnline: handleSetIsOnline,
         setIsDrivingMode,
         setVoiceActive,
         playFeedback,

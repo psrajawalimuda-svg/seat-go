@@ -18,6 +18,8 @@ import UserDashboard from "./pages/UserDashboard";
 import NotFound from "./pages/NotFound";
 import DriverHome from "./pages/driver/DriverHome";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import DriverTripActive from "./pages/driver/DriverTripActive";
 import DriverTrips from "./pages/driver/DriverTrips";
 import DriverTripDetail from "./pages/driver/DriverTripDetail";
@@ -32,6 +34,7 @@ import TripsManagement from "./pages/admin/TripsManagement";
 import BookingsManagement from "./pages/admin/BookingsManagement";
 import PickupPointsManagement from "./pages/admin/PickupPointsManagement";
 import ReviewsManagement from "./pages/admin/ReviewsManagement";
+import UsersManagement from "./pages/admin/UsersManagement";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +61,8 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/driver/login" element={<Login />} />
                 <Route path="/admin/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 
                 {/* Protected driver routes */}
                 <Route path="/driver" element={<ProtectedDriverRoute><DriverHome /></ProtectedDriverRoute>} />
@@ -72,7 +77,8 @@ const App = () => (
                   <Route path="trips" element={<TripsManagement />} />
                   <Route path="bookings" element={<BookingsManagement />} />
                   <Route path="pickup-points" element={<PickupPointsManagement />} />
-                  <Route path="reviews" element={<ReviewsManagement />} />
+                <Route path="reviews" element={<ReviewsManagement />} />
+                <Route path="users" element={<UsersManagement />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

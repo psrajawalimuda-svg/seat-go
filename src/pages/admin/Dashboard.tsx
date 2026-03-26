@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { DollarSign, Users, Bus, ClipboardList, Star, MapPin } from "lucide-react";
 import { StatCard } from "@/components/admin/StatCard";
 import { formatPrice } from "@/data/shuttle-data";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useDrivers, useTrips, useBookings, usePickupPoints, useReviews, toTrip } from "@/hooks/use-supabase-data";
+import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -26,6 +27,14 @@ export default function AdminDashboard() {
   const tripsToday = trips.length;
   const avgRating = reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : "0.0";
 
+  // We need to fetch total users (profiles)
+  const [totalUsers, setTotalUsers] = useState(0);
+  useEffect(() => {
+    supabase.from("profiles").select("id", { count: "exact", head: true }).then(({ count }) => {
+      setTotalUsers(count || 0);
+    });
+  }, []);
+
   const statusColor: Record<string, string> = {
     paid: "bg-primary/10 text-primary border-primary/20",
     completed: "bg-secondary/10 text-secondary border-secondary/20",
@@ -36,9 +45,10 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard icon={ClipboardList} label="Total Bookings" value={String(totalBookings)} trend="12% vs last week" trendUp />
         <StatCard icon={DollarSign} label="Revenue" value={formatPrice(totalRevenue)} trend="8% vs last week" trendUp />
+        <StatCard icon={Users} label="Total Users" value={String(totalUsers)} />
         <StatCard icon={Users} label="Active Drivers" value={String(activeDrivers)} />
         <StatCard icon={Star} label="Avg Rating" value={`${avgRating}/5.0`} />
       </div>
