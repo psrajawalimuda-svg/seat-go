@@ -65,7 +65,8 @@ const App = () => (
                 <Route path="/driver/passengers" element={<ProtectedDriverRoute><DriverPassengers /></ProtectedDriverRoute>} />
                 <Route path="/driver/profile" element={<ProtectedDriverRoute><DriverProfile /></ProtectedDriverRoute>} />
                 
-                <Route path="/admin" element={<AdminLayout />}>
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="drivers" element={<DriversManagement />} />
                   <Route path="trips" element={<TripsManagement />} />
