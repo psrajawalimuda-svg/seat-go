@@ -107,6 +107,7 @@ export type Database = {
           rating: number
           status: string
           total_trips: number
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -117,6 +118,7 @@ export type Database = {
           rating?: number
           status?: string
           total_trips?: number
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -127,6 +129,7 @@ export type Database = {
           rating?: number
           status?: string
           total_trips?: number
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -169,6 +172,30 @@ export type Database = {
           operating_hours?: string | null
           order_index?: number
           phone?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          role?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          role?: string
         }
         Relationships: []
       }

@@ -54,9 +54,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function fetchProfile(_userId: string) {
-    // Profiles table doesn't exist yet — skip fetching
-    setProfile(null);
+  async function fetchProfile(userId: string) {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, phone, role")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching profile:", error);
+        setProfile(null);
+      } else if (data) {
+        setProfile({
+          id: data.id,
+          full_name: data.full_name ?? undefined,
+          phone: data.phone ?? undefined,
+          role: (data.role as UserRole) ?? "passenger",
+        });
+      } else {
+        setProfile(null);
+      }
+    } catch (err) {
+      console.error("Profile fetch failed:", err);
+      setProfile(null);
+    }
     setIsLoading(false);
   }
 

@@ -6,6 +6,7 @@ import {
   Users, DollarSign, Navigation 
 } from "lucide-react";
 import { useDriver } from "@/context/DriverContext";
+import { useAuth } from "@/context/AuthContext";
 import { useDrivers, useBookings, useTrips, usePickupPoints, toTrip, toBooking } from "@/hooks/use-supabase-data";
 import { formatPrice } from "@/data/shuttle-data";
 import { cn } from "@/lib/utils";
@@ -41,14 +42,12 @@ export default function DriverHome() {
     battery: false,
   });
 
-  // Use localStorage-based driver selection until auth is implemented
-  const savedDriverId = typeof window !== "undefined" ? localStorage.getItem("shuttle_driver_id") : null;
-  const currentDriver = drivers?.find(d => d.id === savedDriverId) || drivers?.[0];
-
-  // Persist selection
-  if (currentDriver && !savedDriverId) {
-    localStorage.setItem("shuttle_driver_id", currentDriver.id);
-  }
+  // Use auth-linked driver identity
+  const { user } = useAuth();
+  const currentDriver = useMemo(() => {
+    if (!drivers || !user) return null;
+    return drivers.find(d => d.user_id === user.id) || drivers[0];
+  }, [drivers, user]);
 
   const allTripsConverted = useMemo(() => (dbTrips || []).map(toTrip), [dbTrips]);
 
