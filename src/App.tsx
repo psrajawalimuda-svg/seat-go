@@ -54,8 +54,10 @@ const App = () => (
                 <Route path="/track-ticket" element={<TrackTicket />} />
                 <Route path="/dashboard" element={<UserDashboard />} />
                 
-                {/* Driver auth */}
-                <Route path="/driver/login" element={<DriverLogin />} />
+                {/* Unified login */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/driver/login" element={<Login />} />
+                <Route path="/admin/login" element={<Login />} />
                 
                 {/* Protected driver routes */}
                 <Route path="/driver" element={<ProtectedDriverRoute><DriverHome /></ProtectedDriverRoute>} />
@@ -64,8 +66,6 @@ const App = () => (
                 <Route path="/driver/trip/:id" element={<ProtectedDriverRoute><DriverTripDetail /></ProtectedDriverRoute>} />
                 <Route path="/driver/passengers" element={<ProtectedDriverRoute><DriverPassengers /></ProtectedDriverRoute>} />
                 <Route path="/driver/profile" element={<ProtectedDriverRoute><DriverProfile /></ProtectedDriverRoute>} />
-                
-                <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="drivers" element={<DriversManagement />} />
