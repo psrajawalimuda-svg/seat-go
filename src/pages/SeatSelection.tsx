@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Steering } from "lucide-react";
+import { User } from "lucide-react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { BottomCTA } from "@/components/BottomCTA";
 import { useBooking } from "@/context/BookingContext";
