@@ -1,88 +1,76 @@
 
 
-# Driver Mobile App UI/UX
+# Connect Entire App to Database
 
 ## Overview
-Build a full mobile-first driver app accessible at `/driver/*` routes. This is the companion app for drivers — optimized for handheld use while driving/operating shuttles.
+Migrate all mock data (drivers, trips, bookings, pickup points) to Lovable Cloud database tables, and update every page that currently reads from `MOCK_*` constants to query the database instead. Seed the database with the existing mock data.
 
-## Screens
+## Step 1 — Create Database Tables (Migration)
 
-### 1. Driver Home (`/driver`) — `src/pages/driver/DriverHome.tsx`
-- **Greeting header** with driver name, avatar, and status toggle (Online/Offline)
-- **Today's summary cards**: total trips, passengers, earnings
-- **Active trip card** (if on-trip): route name, departure time, next pickup point, tap to navigate
-- **Upcoming trips list**: card-based, showing route, time, booked passengers count
-- **Bottom tab navigation**: Home, Trips, Passengers, Profile
+Create 4 tables:
 
-### 2. Trip Detail (`/driver/trip/:id`) — `src/pages/driver/DriverTripDetail.tsx`
-- **Route info header**: route name, departure time, vehicle plate
-- **Pickup points timeline**: vertical stepper showing all J1-J17 stops with:
-  - Stop label & name
-  - Estimated time
-  - Number of passengers boarding at each stop
-  - Status indicator (upcoming / current / completed)
-- **Passenger list** per stop: name, seat number, phone (tap to call)
-- **"Start Trip" / "Arrive at Stop" / "Complete Trip"** action button at bottom
-- **Interactive map** showing the route with current position
+**`drivers`**: id (uuid, PK), name, phone, plate, status (text: active/inactive/on-trip), rating (float, default 0), total_trips (int, default 0), created_at
 
-### 3. My Trips (`/driver/trips`) — `src/pages/driver/DriverTrips.tsx`
-- **Tab navigation**: Today, Upcoming, History
-- **Trip cards**: route, time, passenger count, earnings, status badge
-- Tap to open trip detail
+**`trips`**: id (uuid, PK), route_name, departure_time, base_price (int), total_seats (int), booked_seats (int[], default '{}'), driver_id (uuid FK → drivers), created_at
 
-### 4. Passenger Manifest (`/driver/passengers`) — `src/pages/driver/DriverPassengers.tsx`
-- **Grouped by trip**: collapsible sections
-- Each passenger: name, pickup point, seat number, status (boarded/waiting/no-show)
-- Quick actions: call, mark as boarded
+**`bookings`**: id (uuid, PK), trip_id (uuid FK → trips), passenger_name, passenger_phone, pickup_point_id (text), seat_number (int), date (text), total_price (int), status (text: paid/completed/cancelled), booked_at (timestamptz)
 
-### 5. Driver Profile (`/driver/profile`) — `src/pages/driver/DriverProfile.tsx`
-- **Profile card**: name, photo placeholder, phone, vehicle plate
-- **Stats**: rating, total trips, this month earnings
-- **Settings**: notifications toggle, language
-- **Logout button**
+**`pickup_points`**: id (text, PK), label, name, order_index (int), minutes_from_start (int), lat (float), lng (float)
 
-## Shared Components
+All tables: RLS enabled, public read/write policies (no auth yet, matching current pattern). Enable realtime on all tables.
 
-### `src/components/driver/DriverBottomNav.tsx`
-- Fixed bottom tab bar with 4 tabs: Home, Trips, Passengers, Profile
-- Icons + labels, active state highlight with primary color
+## Step 2 — Seed Data (Insert)
 
-### `src/components/driver/TripCard.tsx`
-- Reusable card showing trip summary (route, time, seats, status)
+Insert existing mock data from `shuttle-data.ts` and `admin-data.ts` into the new tables using the insert tool.
 
-### `src/components/driver/PickupTimeline.tsx`
-- Vertical timeline component for pickup point progression
+## Step 3 — Create React Query Hooks (`src/hooks/use-supabase-data.ts`)
+
+Custom hooks wrapping Supabase queries:
+- `useDrivers()` — fetch/mutate drivers
+- `useTrips()` — fetch/mutate trips (join driver info)
+- `useBookings()` — fetch/mutate bookings
+- `usePickupPoints()` — fetch pickup points (ordered)
+
+Each hook returns `{ data, isLoading, error }` plus mutation functions for CRUD.
+
+## Step 4 — Update All Pages
+
+Replace every `MOCK_*` import with database queries:
+
+| Page | Current Source | New Source |
+|------|--------------|------------|
+| `Home.tsx` | `PICKUP_POINTS` | `usePickupPoints()` |
+| `SearchResults.tsx` | `MOCK_TRIPS` | `useTrips()` |
+| `SeatSelection.tsx` | `MOCK_TRIPS` | `useTrips()` |
+| `Checkout.tsx` | `MOCK_TRIPS` | `useTrips()` |
+| `ETicket.tsx` | `MOCK_TRIPS` | `useTrips()` |
+| `DriverTracking.tsx` | `MOCK_TRIPS`, `PICKUP_POINTS` | `useTrips()`, `usePickupPoints()` |
+| `admin/Dashboard.tsx` | All mocks | All hooks |
+| `admin/DriversManagement.tsx` | `MOCK_DRIVERS` | `useDrivers()` |
+| `admin/TripsManagement.tsx` | `MOCK_TRIPS`, `MOCK_DRIVERS` | `useTrips()`, `useDrivers()` |
+| `admin/BookingsManagement.tsx` | `MOCK_BOOKINGS` | `useBookings()` |
+| `admin/PickupPointsManagement.tsx` | `PICKUP_POINTS` | `usePickupPoints()` |
+| `driver/DriverHome.tsx` | All mocks | All hooks |
+| `driver/DriverTripDetail.tsx` | `MOCK_TRIPS`, `MOCK_BOOKINGS`, `PICKUP_POINTS` | Hooks |
+| `driver/DriverTrips.tsx` | `MOCK_TRIPS` | `useTrips()` |
+| `driver/DriverPassengers.tsx` | `MOCK_BOOKINGS`, `MOCK_TRIPS`, `PICKUP_POINTS` | Hooks |
+
+## Step 5 — Wire CRUD Operations
+
+- **Admin Drivers**: Add/edit → `supabase.from('drivers').upsert()`
+- **Admin Trips**: Add/edit → `supabase.from('trips').upsert()`
+- **Admin Bookings**: Status toggle → `supabase.from('bookings').update()`
+- **Admin Pickup Points**: Edit → `supabase.from('pickup_points').update()`
+- **Checkout payment**: Insert booking → `supabase.from('bookings').insert()`, update trip `booked_seats`
+
+## Step 6 — Update BookingContext
+
+Update `BookingContext.tsx` to work with database IDs (uuid) instead of mock string IDs. The context remains in-memory for the booking flow but references real database records.
 
 ## Technical Details
-- All screens use `mobile-container` (max-w-md mx-auto) like existing passenger app
-- Uses existing design tokens (shuttle-card, shuttle-gradient, tap-highlight)
-- Mock data from existing `MOCK_TRIPS`, `MOCK_DRIVERS`, `MOCK_BOOKINGS`
-- Simulates a logged-in driver (hardcoded as "Pak Ahmad" / driver d1)
-- Framer Motion for page transitions and microinteractions
-- Leaflet map on trip detail for route visualization
-- Routes added under `/driver/*` in App.tsx
-
-## File Structure
-```text
-src/
-├── components/driver/
-│   ├── DriverBottomNav.tsx
-│   ├── TripCard.tsx
-│   └── PickupTimeline.tsx
-├── pages/driver/
-│   ├── DriverHome.tsx
-│   ├── DriverTripDetail.tsx
-│   ├── DriverTrips.tsx
-│   ├── DriverPassengers.tsx
-│   └── DriverProfile.tsx
-```
-
-## Routes (App.tsx)
-```
-/driver         → DriverHome
-/driver/trip/:id → DriverTripDetail
-/driver/trips   → DriverTrips
-/driver/passengers → DriverPassengers
-/driver/profile → DriverProfile
-```
+- Keep `shuttle-data.ts` utility functions (`formatPrice`, `getPickupTime`) — only remove mock data arrays
+- Add loading states (skeleton) on all pages while data fetches
+- Use `@tanstack/react-query` (already installed) via the Supabase hooks for caching
+- Trip's `driver_id` foreign key replaces storing `driverName/driverPhone/vehiclePlate` directly — join on query
+- ~15 files modified, 1 new hooks file, 4 database tables created
 
