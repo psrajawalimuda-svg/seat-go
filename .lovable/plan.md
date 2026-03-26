@@ -1,76 +1,77 @@
 
 
-# Connect Entire App to Database
+# Accurate Seat Layouts by Vehicle Type
 
 ## Overview
-Migrate all mock data (drivers, trips, bookings, pickup points) to Lovable Cloud database tables, and update every page that currently reads from `MOCK_*` constants to query the database instead. Seed the database with the existing mock data.
+Replace the current generic grid-based seat layout with vehicle-type-specific layouts that match real shuttle configurations. Each trip will have a `vehicle_type` field that determines the exact seat arrangement shown on the seat selection screen.
 
-## Step 1 — Create Database Tables (Migration)
+## Vehicle Types & Layouts
 
-Create 4 tables:
+```text
+MINIBUS (3 seats):
+┌─────────────────┐
+│ [1]     [DRIVER] │  Row 1
+│ [2]  [3]         │  Row 2
+│ ═══ BAGGAGE ═══  │  Row 3
+└─────────────────┘
 
-**`drivers`**: id (uuid, PK), name, phone, plate, status (text: active/inactive/on-trip), rating (float, default 0), total_trips (int, default 0), created_at
+MINIBUS_ROOF (5 seats):
+┌─────────────────┐
+│ [1]     [DRIVER] │  Row 1
+│ [2]  [3]         │  Row 2
+│ [4]  [5]         │  Row 3
+│ ══ BAGGAGE ROOF ══│
+└─────────────────┘
 
-**`trips`**: id (uuid, PK), route_name, departure_time, base_price (int), total_seats (int), booked_seats (int[], default '{}'), driver_id (uuid FK → drivers), created_at
+HIACE (10 seats):
+┌─────────────────┐
+│ [1]     [DRIVER] │  Row 1
+│ [2] [3] [4]      │  Row 2
+│ [5] [6] [7]      │  Row 3
+│ [8] [9] [10]     │  Row 4
+│ ═══ BAGGAGE ═══  │
+└─────────────────┘
+```
 
-**`bookings`**: id (uuid, PK), trip_id (uuid FK → trips), passenger_name, passenger_phone, pickup_point_id (text), seat_number (int), date (text), total_price (int), status (text: paid/completed/cancelled), booked_at (timestamptz)
+## Database Changes
 
-**`pickup_points`**: id (text, PK), label, name, order_index (int), minutes_from_start (int), lat (float), lng (float)
+**Migration**: Add `vehicle_type` column to `trips` table:
+```sql
+ALTER TABLE trips ADD COLUMN vehicle_type text NOT NULL DEFAULT 'hiace';
+```
 
-All tables: RLS enabled, public read/write policies (no auth yet, matching current pattern). Enable realtime on all tables.
+Valid values: `minibus`, `minibus_roof`, `hiace`
 
-## Step 2 — Seed Data (Insert)
+**Update existing trips** to set appropriate vehicle types and correct `total_seats` values.
 
-Insert existing mock data from `shuttle-data.ts` and `admin-data.ts` into the new tables using the insert tool.
+## Code Changes
 
-## Step 3 — Create React Query Hooks (`src/hooks/use-supabase-data.ts`)
+### 1. Define Seat Layout Config (`src/data/shuttle-data.ts`)
+Add a `VEHICLE_LAYOUTS` constant mapping each vehicle type to its row structure:
+- Each row is an array of cell types: `"seat"`, `"driver"`, `"empty"`, `"baggage"`, `"baggage_roof"`
+- Includes `totalSeats`, `label` (display name), and `rows` definition
 
-Custom hooks wrapping Supabase queries:
-- `useDrivers()` — fetch/mutate drivers
-- `useTrips()` — fetch/mutate trips (join driver info)
-- `useBookings()` — fetch/mutate bookings
-- `usePickupPoints()` — fetch pickup points (ordered)
+### 2. Update `SeatSelection.tsx`
+- Import vehicle layout config
+- Read `vehicle_type` from the trip (via `toTrip`)
+- Replace the generic `cols/rows` grid with layout-driven rendering
+- Render driver cell with steering wheel icon in row 1
+- Render baggage row at the bottom with a luggage icon/label
+- Each seat cell uses the existing `SeatIcon` component
 
-Each hook returns `{ data, isLoading, error }` plus mutation functions for CRUD.
+### 3. Update `use-supabase-data.ts`
+- Add `vehicle_type` to `DbTrip` interface
+- Pass `vehicleType` through in `toTrip()` converter
 
-## Step 4 — Update All Pages
-
-Replace every `MOCK_*` import with database queries:
-
-| Page | Current Source | New Source |
-|------|--------------|------------|
-| `Home.tsx` | `PICKUP_POINTS` | `usePickupPoints()` |
-| `SearchResults.tsx` | `MOCK_TRIPS` | `useTrips()` |
-| `SeatSelection.tsx` | `MOCK_TRIPS` | `useTrips()` |
-| `Checkout.tsx` | `MOCK_TRIPS` | `useTrips()` |
-| `ETicket.tsx` | `MOCK_TRIPS` | `useTrips()` |
-| `DriverTracking.tsx` | `MOCK_TRIPS`, `PICKUP_POINTS` | `useTrips()`, `usePickupPoints()` |
-| `admin/Dashboard.tsx` | All mocks | All hooks |
-| `admin/DriversManagement.tsx` | `MOCK_DRIVERS` | `useDrivers()` |
-| `admin/TripsManagement.tsx` | `MOCK_TRIPS`, `MOCK_DRIVERS` | `useTrips()`, `useDrivers()` |
-| `admin/BookingsManagement.tsx` | `MOCK_BOOKINGS` | `useBookings()` |
-| `admin/PickupPointsManagement.tsx` | `PICKUP_POINTS` | `usePickupPoints()` |
-| `driver/DriverHome.tsx` | All mocks | All hooks |
-| `driver/DriverTripDetail.tsx` | `MOCK_TRIPS`, `MOCK_BOOKINGS`, `PICKUP_POINTS` | Hooks |
-| `driver/DriverTrips.tsx` | `MOCK_TRIPS` | `useTrips()` |
-| `driver/DriverPassengers.tsx` | `MOCK_BOOKINGS`, `MOCK_TRIPS`, `PICKUP_POINTS` | Hooks |
-
-## Step 5 — Wire CRUD Operations
-
-- **Admin Drivers**: Add/edit → `supabase.from('drivers').upsert()`
-- **Admin Trips**: Add/edit → `supabase.from('trips').upsert()`
-- **Admin Bookings**: Status toggle → `supabase.from('bookings').update()`
-- **Admin Pickup Points**: Edit → `supabase.from('pickup_points').update()`
-- **Checkout payment**: Insert booking → `supabase.from('bookings').insert()`, update trip `booked_seats`
-
-## Step 6 — Update BookingContext
-
-Update `BookingContext.tsx` to work with database IDs (uuid) instead of mock string IDs. The context remains in-memory for the booking flow but references real database records.
+### 4. Update `TripsManagement.tsx` (Admin)
+- Add vehicle type selector (Select dropdown) in the add/edit trip dialog
+- Options: Mini Bus (3 seats), Mini Bus + Roof Rack (5 seats), HiAce (10 seats)
+- Auto-set `total_seats` when vehicle type changes
+- Show vehicle type column in the trips table
 
 ## Technical Details
-- Keep `shuttle-data.ts` utility functions (`formatPrice`, `getPickupTime`) — only remove mock data arrays
-- Add loading states (skeleton) on all pages while data fetches
-- Use `@tanstack/react-query` (already installed) via the Supabase hooks for caching
-- Trip's `driver_id` foreign key replaces storing `driverName/driverPhone/vehiclePlate` directly — join on query
-- ~15 files modified, 1 new hooks file, 4 database tables created
+- `vehicle_type` defaults to `hiace` so existing trips continue working
+- The seat numbering follows the exact order from the reference layouts
+- Baggage rows are non-interactive visual elements
+- Driver cell is a fixed non-interactive element with an icon
 
