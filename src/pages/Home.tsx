@@ -9,12 +9,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useBooking } from "@/context/BookingContext";
-import { PICKUP_POINTS, DESTINATIONS } from "@/data/shuttle-data";
+import { DESTINATIONS } from "@/data/shuttle-data";
+import { usePickupPoints } from "@/hooks/use-supabase-data";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Home() {
   const navigate = useNavigate();
   const { pickupPoint, destination, date, setPickupPoint, setDestination, setDate } = useBooking();
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const { data: pickupPoints = [], isLoading } = usePickupPoints();
 
   const canSearch = pickupPoint && destination && date;
 
@@ -24,7 +27,6 @@ export default function Home() {
 
   return (
     <div className="mobile-container min-h-screen bg-background">
-      {/* Hero header */}
       <div className="shuttle-gradient px-5 pt-12 pb-10 rounded-b-[2rem]">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2.5 mb-6">
           <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center">
@@ -46,7 +48,6 @@ export default function Home() {
         </motion.h2>
       </div>
 
-      {/* Search form card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -54,31 +55,33 @@ export default function Home() {
         className="px-5 -mt-6"
       >
         <div className="shuttle-card-elevated space-y-4 p-5">
-          {/* Pickup Point */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pickup Point</label>
-            <Select
-              value={pickupPoint?.id || ""}
-              onValueChange={(v) => setPickupPoint(PICKUP_POINTS.find((p) => p.id === v) || null)}
-            >
-              <SelectTrigger className="h-12 rounded-xl border-border bg-muted/40">
-                <div className="flex items-center gap-2.5">
-                  <MapPin className="w-4 h-4 text-primary shrink-0" />
-                  <SelectValue placeholder="Select pickup point" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                {PICKUP_POINTS.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    <span className="font-semibold text-primary">{p.label}</span>
-                    <span className="text-muted-foreground"> — {p.name}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isLoading ? (
+              <Skeleton className="h-12 rounded-xl" />
+            ) : (
+              <Select
+                value={pickupPoint?.id || ""}
+                onValueChange={(v) => setPickupPoint(pickupPoints.find((p) => p.id === v) || null)}
+              >
+                <SelectTrigger className="h-12 rounded-xl border-border bg-muted/40">
+                  <div className="flex items-center gap-2.5">
+                    <MapPin className="w-4 h-4 text-primary shrink-0" />
+                    <SelectValue placeholder="Select pickup point" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {pickupPoints.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <span className="font-semibold text-primary">{p.label}</span>
+                      <span className="text-muted-foreground"> — {p.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
-          {/* Destination */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Destination</label>
             <Select value={destination} onValueChange={setDestination}>
@@ -96,7 +99,6 @@ export default function Home() {
             </Select>
           </div>
 
-          {/* Date */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Travel Date</label>
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
@@ -125,7 +127,6 @@ export default function Home() {
             </Popover>
           </div>
 
-          {/* Search button */}
           <Button
             onClick={handleSearch}
             disabled={!canSearch}
@@ -138,7 +139,6 @@ export default function Home() {
         </div>
       </motion.div>
 
-      {/* Quick info */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

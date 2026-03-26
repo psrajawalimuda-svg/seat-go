@@ -1,30 +1,43 @@
 import { useState } from "react";
 import { Pencil, MapPin } from "lucide-react";
-import { PICKUP_POINTS, PickupPoint } from "@/data/shuttle-data";
+import { usePickupPoints } from "@/hooks/use-supabase-data";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function PickupPointsManagement() {
-  const [points, setPoints] = useState<PickupPoint[]>(PICKUP_POINTS);
+  const { data: points = [], isLoading } = usePickupPoints();
+  const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<PickupPoint | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", minutesFromStart: "" });
 
-  const openEdit = (p: PickupPoint) => {
-    setEditing(p);
+  const openEdit = (p: typeof points[0]) => {
+    setEditingId(p.id);
     setForm({ name: p.name, minutesFromStart: String(p.minutesFromStart) });
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (!editing || !form.name) return;
-    setPoints(prev => prev.map(p => p.id === editing.id ? { ...p, name: form.name, minutesFromStart: Number(form.minutesFromStart) } : p));
+  const handleSave = async () => {
+    if (!editingId || !form.name) return;
+    const { error } = await supabase.from("pickup_points").update({
+      name: form.name,
+      minutes_from_start: Number(form.minutesFromStart),
+    } as any).eq("id", editingId);
+    if (error) { toast.error("Failed to save"); return; }
+    qc.invalidateQueries({ queryKey: ["pickup_points"] });
     setDialogOpen(false);
+    toast.success("Pickup point updated");
   };
+
+  if (isLoading) return <Skeleton className="h-64" />;
 
   return (
     <div className="space-y-4">
@@ -54,17 +67,13 @@ export default function PickupPointsManagement() {
                 <TableRow key={p.id}>
                   <TableCell className="font-medium">{p.order}</TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                      {p.label}
-                    </span>
+                    <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary text-xs font-bold">{p.label}</span>
                   </TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell>+{p.minutesFromStart} min</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{p.coords[0].toFixed(4)}, {p.coords[1].toFixed(4)}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -76,17 +85,11 @@ export default function PickupPointsManagement() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit {editing?.label} — {editing?.name}</DialogTitle>
+            <DialogTitle>Edit Pickup Point</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label>Name</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Minutes from Start</Label>
-              <Input type="number" value={form.minutesFromStart} onChange={e => setForm(f => ({ ...f, minutesFromStart: e.target.value }))} />
-            </div>
+            <div><Label>Name</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div><Label>Minutes from Start</Label><Input type="number" value={form.minutesFromStart} onChange={e => setForm(f => ({ ...f, minutesFromStart: e.target.value }))} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

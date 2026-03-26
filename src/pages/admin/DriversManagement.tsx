@@ -1,20 +1,22 @@
 import { useState } from "react";
 import { Plus, Pencil, Phone, Star } from "lucide-react";
-import { MOCK_DRIVERS, Driver } from "@/data/admin-data";
+import { useDrivers, DbDriver } from "@/hooks/use-supabase-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 export default function DriversManagement() {
-  const [drivers, setDrivers] = useState<Driver[]>(MOCK_DRIVERS);
+  const { data: drivers = [], isLoading, upsert } = useDrivers();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Driver | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", plate: "", status: "active" as Driver["status"] });
+  const [editing, setEditing] = useState<DbDriver | null>(null);
+  const [form, setForm] = useState({ name: "", phone: "", plate: "", status: "active" });
 
   const openAdd = () => {
     setEditing(null);
@@ -22,29 +24,25 @@ export default function DriversManagement() {
     setDialogOpen(true);
   };
 
-  const openEdit = (d: Driver) => {
+  const openEdit = (d: DbDriver) => {
     setEditing(d);
     setForm({ name: d.name, phone: d.phone, plate: d.plate, status: d.status });
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.phone || !form.plate) return;
-    if (editing) {
-      setDrivers(prev => prev.map(d => d.id === editing.id ? { ...d, ...form } : d));
-    } else {
-      const newDriver: Driver = {
-        id: `d${Date.now()}`,
-        name: form.name,
-        phone: form.phone,
-        plate: form.plate,
-        status: form.status,
-        rating: 0,
-        totalTrips: 0,
-      };
-      setDrivers(prev => [...prev, newDriver]);
+    try {
+      if (editing) {
+        await upsert.mutateAsync({ id: editing.id, ...form });
+      } else {
+        await upsert.mutateAsync(form);
+      }
+      setDialogOpen(false);
+      toast.success(editing ? "Driver updated" : "Driver added");
+    } catch {
+      toast.error("Failed to save");
     }
-    setDialogOpen(false);
   };
 
   const statusColor: Record<string, string> = {
@@ -52,6 +50,8 @@ export default function DriversManagement() {
     inactive: "bg-muted text-muted-foreground border-border",
     "on-trip": "bg-primary/10 text-primary border-primary/20",
   };
+
+  if (isLoading) return <Skeleton className="h-64" />;
 
   return (
     <div className="space-y-4">
@@ -82,12 +82,8 @@ export default function DriversManagement() {
                   <TableCell className="font-mono text-xs">{d.plate}</TableCell>
                   <TableCell><Badge variant="outline" className={statusColor[d.status]}>{d.status}</Badge></TableCell>
                   <TableCell><span className="flex items-center gap-1"><Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />{d.rating}</span></TableCell>
-                  <TableCell>{d.totalTrips}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(d)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                  </TableCell>
+                  <TableCell>{d.total_trips}</TableCell>
+                  <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(d)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -97,25 +93,14 @@ export default function DriversManagement() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit Driver" : "Add Driver"}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? "Edit Driver" : "Add Driver"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label>Name</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Driver name" />
-            </div>
-            <div>
-              <Label>Phone</Label>
-              <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+62..." />
-            </div>
-            <div>
-              <Label>Vehicle Plate</Label>
-              <Input value={form.plate} onChange={e => setForm(f => ({ ...f, plate: e.target.value }))} placeholder="B 1234 XX" />
-            </div>
+            <div><Label>Name</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Driver name" /></div>
+            <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+62..." /></div>
+            <div><Label>Vehicle Plate</Label><Input value={form.plate} onChange={e => setForm(f => ({ ...f, plate: e.target.value }))} placeholder="B 1234 XX" /></div>
             <div>
               <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v as Driver["status"] }))}>
+              <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
@@ -127,7 +112,7 @@ export default function DriversManagement() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editing ? "Save" : "Add"}</Button>
+            <Button onClick={handleSave} disabled={upsert.isPending}>{editing ? "Save" : "Add"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

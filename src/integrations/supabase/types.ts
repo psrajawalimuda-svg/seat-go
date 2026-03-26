@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      bookings: {
+        Row: {
+          booked_at: string
+          date: string
+          id: string
+          passenger_name: string
+          passenger_phone: string
+          pickup_point_id: string
+          seat_number: number
+          status: string
+          total_price: number
+          trip_id: string
+        }
+        Insert: {
+          booked_at?: string
+          date: string
+          id?: string
+          passenger_name: string
+          passenger_phone: string
+          pickup_point_id: string
+          seat_number: number
+          status?: string
+          total_price?: number
+          trip_id: string
+        }
+        Update: {
+          booked_at?: string
+          date?: string
+          id?: string
+          passenger_name?: string
+          passenger_phone?: string
+          pickup_point_id?: string
+          seat_number?: number
+          status?: string
+          total_price?: number
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_locations: {
         Row: {
           bearing: number
@@ -49,6 +96,110 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      drivers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          plate: string
+          rating: number
+          status: string
+          total_trips: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+          plate: string
+          rating?: number
+          status?: string
+          total_trips?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          plate?: string
+          rating?: number
+          status?: string
+          total_trips?: number
+        }
+        Relationships: []
+      }
+      pickup_points: {
+        Row: {
+          id: string
+          label: string
+          lat: number
+          lng: number
+          minutes_from_start: number
+          name: string
+          order_index: number
+        }
+        Insert: {
+          id: string
+          label: string
+          lat: number
+          lng: number
+          minutes_from_start?: number
+          name: string
+          order_index: number
+        }
+        Update: {
+          id?: string
+          label?: string
+          lat?: number
+          lng?: number
+          minutes_from_start?: number
+          name?: string
+          order_index?: number
+        }
+        Relationships: []
+      }
+      trips: {
+        Row: {
+          base_price: number
+          booked_seats: number[]
+          created_at: string
+          departure_time: string
+          driver_id: string | null
+          id: string
+          route_name: string
+          total_seats: number
+        }
+        Insert: {
+          base_price?: number
+          booked_seats?: number[]
+          created_at?: string
+          departure_time: string
+          driver_id?: string | null
+          id?: string
+          route_name: string
+          total_seats?: number
+        }
+        Update: {
+          base_price?: number
+          booked_seats?: number[]
+          created_at?: string
+          departure_time?: string
+          driver_id?: string | null
+          id?: string
+          route_name?: string
+          total_seats?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

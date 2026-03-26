@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Clock, Users, Zap } from "lucide-react";
@@ -7,19 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SkeletonCard } from "@/components/SkeletonCard";
 import { useBooking } from "@/context/BookingContext";
-import { MOCK_TRIPS, formatPrice, getPickupTime } from "@/data/shuttle-data";
+import { formatPrice, getPickupTime } from "@/data/shuttle-data";
+import { useTrips, toTrip } from "@/hooks/use-supabase-data";
 
 export default function SearchResults() {
   const navigate = useNavigate();
   const { pickupPoint, setSelectedTripId } = useBooking();
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(t);
-  }, []);
+  const { data: dbTrips, isLoading } = useTrips();
 
   if (!pickupPoint) { navigate("/"); return null; }
+
+  const trips = (dbTrips || []).map(toTrip);
 
   const handleSelect = (tripId: string) => {
     setSelectedTripId(tripId);
@@ -31,17 +28,16 @@ export default function SearchResults() {
       <ScreenHeader title="Available Trips" />
 
       <div className="px-4 py-4 space-y-3">
-        {/* Selected pickup badge */}
         <div className="flex items-center gap-2 px-1">
           <Badge variant="secondary" className="rounded-lg px-3 py-1.5 font-semibold bg-primary-light text-accent-foreground">
             📍 {pickupPoint.label} — {pickupPoint.name}
           </Badge>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
         ) : (
-          MOCK_TRIPS.map((trip, i) => {
+          trips.map((trip, i) => {
             const remaining = trip.totalSeats - trip.bookedSeats.length;
             const pickupTime = getPickupTime(trip.departureTime, pickupPoint);
             const isLow = remaining <= 3;

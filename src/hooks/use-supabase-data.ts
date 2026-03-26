@@ -1,0 +1,184 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+// ─── Types ───────────────────────────────────────────────────────────
+
+export interface DbDriver {
+  id: string;
+  name: string;
+  phone: string;
+  plate: string;
+  status: string;
+  rating: number;
+  total_trips: number;
+  created_at: string;
+}
+
+export interface DbTrip {
+  id: string;
+  route_name: string;
+  departure_time: string;
+  base_price: number;
+  total_seats: number;
+  booked_seats: number[];
+  driver_id: string | null;
+  created_at: string;
+  // joined
+  driver?: DbDriver | null;
+}
+
+export interface DbBooking {
+  id: string;
+  trip_id: string;
+  passenger_name: string;
+  passenger_phone: string;
+  pickup_point_id: string;
+  seat_number: number;
+  date: string;
+  total_price: number;
+  status: string;
+  booked_at: string;
+}
+
+export interface DbPickupPoint {
+  id: string;
+  label: string;
+  name: string;
+  order_index: number;
+  minutes_from_start: number;
+  lat: number;
+  lng: number;
+}
+
+// Helper to convert DbPickupPoint to the legacy PickupPoint shape used in components
+export function toPickupPoint(p: DbPickupPoint) {
+  return {
+    id: p.id,
+    label: p.label,
+    name: p.name,
+    order: p.order_index,
+    minutesFromStart: p.minutes_from_start,
+    coords: [p.lat, p.lng] as [number, number],
+  };
+}
+
+// Convert DbTrip + joined driver to the legacy Trip shape
+export function toTrip(t: DbTrip) {
+  return {
+    id: t.id,
+    routeName: t.route_name,
+    departureTime: t.departure_time,
+    basePrice: t.base_price,
+    totalSeats: t.total_seats,
+    bookedSeats: t.booked_seats || [],
+    driverName: t.driver?.name || "",
+    driverPhone: t.driver?.phone || "",
+    vehiclePlate: t.driver?.plate || "",
+  };
+}
+
+// ─── Hooks ───────────────────────────────────────────────────────────
+
+export function usePickupPoints() {
+  return useQuery({
+    queryKey: ["pickup_points"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pickup_points")
+        .select("*")
+        .order("order_index");
+      if (error) throw error;
+      return (data as DbPickupPoint[]).map(toPickupPoint);
+    },
+  });
+}
+
+export function useDrivers() {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["drivers"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("drivers").select("*").order("name");
+      if (error) throw error;
+      return data as DbDriver[];
+    },
+  });
+
+  const upsert = useMutation({
+    mutationFn: async (driver: Partial<DbDriver> & { id?: string }) => {
+      const { error } = await supabase.from("drivers").upsert(driver as any);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["drivers"] }),
+  });
+
+  return { ...query, upsert };
+}
+
+export function useTrips() {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["trips"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("trips")
+        .select("*, driver:drivers(*)")
+        .order("departure_time");
+      if (error) throw error;
+      return (data as any[]).map((t) => ({
+        ...t,
+        driver: t.driver || null,
+      })) as DbTrip[];
+    },
+  });
+
+  const upsert = useMutation({
+    mutationFn: async (trip: Partial<DbTrip> & { id?: string }) => {
+      const { driver, ...rest } = trip as any;
+      const { error } = await supabase.from("trips").upsert(rest);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trips"] }),
+  });
+
+  const updateSeats = useMutation({
+    mutationFn: async ({ tripId, bookedSeats }: { tripId: string; bookedSeats: number[] }) => {
+      const { error } = await supabase.from("trips").update({ booked_seats: bookedSeats } as any).eq("id", tripId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trips"] }),
+  });
+
+  return { ...query, upsert, updateSeats };
+}
+
+export function useBookings() {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["bookings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("bookings").select("*").order("booked_at", { ascending: false });
+      if (error) throw error;
+      return data as DbBooking[];
+    },
+  });
+
+  const insert = useMutation({
+    mutationFn: async (booking: Omit<DbBooking, "id" | "booked_at">) => {
+      const { data, error } = await supabase.from("bookings").insert(booking as any).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["bookings"] }),
+  });
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("bookings").update({ status } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["bookings"] }),
+  });
+
+  return { ...query, insert, updateStatus };
+}
