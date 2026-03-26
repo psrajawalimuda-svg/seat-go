@@ -85,9 +85,23 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
+  }
+
+  /* Branded selection color */
+  ::selection {
+    background: hsl(217 91% 50% / 0.2);
+    color: hsl(var(--foreground));
   }
 }
 
@@ -111,11 +125,27 @@
   }
 
   .mobile-container {
-    @apply max-w-md mx-auto min-h-screen;
+    @apply max-w-[480px] mx-auto min-h-screen;
   }
 
   .tap-highlight {
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
     @apply active:scale-[0.97] transition-transform duration-150;
+  }
+
+  /* Safe area utilities */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Touch-friendly minimum target */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
   }
 }

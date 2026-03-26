@@ -13,7 +13,7 @@ export function DriverBottomNav() {
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-card border-t border-border z-50">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-card border-t border-border z-50">
       <div className="flex items-center justify-around h-16 px-2">
         {tabs.map((tab) => {
           const isActive =
@@ -25,7 +25,7 @@ export function DriverBottomNav() {
             <button
               key={tab.path}
               onClick={() => navigate(tab.path)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors tap-highlight ${
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors tap-highlight touch-target ${
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground"
@@ -37,7 +37,6 @@ export function DriverBottomNav() {
           );
         })}
       </div>
-      {/* Safe area spacer for notched phones */}
       <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
   );
