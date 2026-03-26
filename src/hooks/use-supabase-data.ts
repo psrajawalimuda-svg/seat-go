@@ -22,6 +22,7 @@ export interface DbTrip {
   total_seats: number;
   booked_seats: number[];
   driver_id: string | null;
+  vehicle_type: string;
   created_at: string;
   // joined
   driver?: DbDriver | null;
@@ -71,6 +72,7 @@ export function toTrip(t: DbTrip) {
     basePrice: t.base_price,
     totalSeats: t.total_seats,
     bookedSeats: t.booked_seats || [],
+    vehicleType: t.vehicle_type || "hiace",
     driverName: t.driver?.name || "",
     driverPhone: t.driver?.phone || "",
     vehiclePlate: t.driver?.plate || "",
