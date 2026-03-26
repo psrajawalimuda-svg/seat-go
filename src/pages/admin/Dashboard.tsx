@@ -1,4 +1,5 @@
-import { DollarSign, Users, Bus, ClipboardList, Star } from "lucide-react";
+import { lazy, Suspense } from "react";
+import { DollarSign, Users, Bus, ClipboardList, Star, MapPin } from "lucide-react";
 import { StatCard } from "@/components/admin/StatCard";
 import { formatPrice } from "@/data/shuttle-data";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useDrivers, useTrips, useBookings, usePickupPoints, useReviews, toTrip } from "@/hooks/use-supabase-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatDate } from "@/lib/utils";
+
+const FleetMap = lazy(() => import("@/components/admin/FleetMap"));
 
 export default function AdminDashboard() {
   const { data: drivers = [] } = useDrivers();
@@ -39,6 +42,20 @@ export default function AdminDashboard() {
         <StatCard icon={Users} label="Active Drivers" value={String(activeDrivers)} />
         <StatCard icon={Star} label="Avg Rating" value={`${avgRating}/5.0`} />
       </div>
+
+      {/* Real-Time Fleet Map */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapPin className="h-4 w-4" /> Live Fleet Map
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
+            <FleetMap />
+          </Suspense>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
