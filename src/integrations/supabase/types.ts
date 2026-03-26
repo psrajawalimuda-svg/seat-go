@@ -132,31 +132,79 @@ export type Database = {
       }
       pickup_points: {
         Row: {
+          address: string | null
           id: string
+          is_active: boolean | null
           label: string
           lat: number
           lng: number
           minutes_from_start: number
           name: string
+          operating_hours: string | null
           order_index: number
+          phone: string | null
         }
         Insert: {
+          address?: string | null
           id: string
+          is_active?: boolean | null
           label: string
           lat: number
           lng: number
           minutes_from_start?: number
           name: string
+          operating_hours?: string | null
           order_index: number
+          phone?: string | null
         }
         Update: {
+          address?: string | null
           id?: string
+          is_active?: boolean | null
           label?: string
           lat?: number
           lng?: number
           minutes_from_start?: number
           name?: string
+          operating_hours?: string | null
           order_index?: number
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          booking_id: string
+          comment: string
+          created_at: string
+          driver_id: string
+          id: string
+          passenger_name: string
+          rating: number
+          trip_date: string
+          trip_id: string
+        }
+        Insert: {
+          booking_id: string
+          comment?: string
+          created_at?: string
+          driver_id: string
+          id?: string
+          passenger_name: string
+          rating?: number
+          trip_date: string
+          trip_id: string
+        }
+        Update: {
+          booking_id?: string
+          comment?: string
+          created_at?: string
+          driver_id?: string
+          id?: string
+          passenger_name?: string
+          rating?: number
+          trip_date?: string
+          trip_id?: string
         }
         Relationships: []
       }
