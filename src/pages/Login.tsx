@@ -84,7 +84,7 @@ export default function Login() {
       password,
       options: {
         data: { full_name: fullName, phone },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: window.location.origin + "/driver",
       },
     });
 

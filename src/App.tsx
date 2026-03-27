@@ -97,7 +97,7 @@ const App = () => (
                   <Route path="/driver/trip/:id" element={<ProtectedDriverRoute><DriverTripDetail /></ProtectedDriverRoute>} />
                   <Route path="/driver/passengers" element={<ProtectedDriverRoute><DriverPassengers /></ProtectedDriverRoute>} />
                   <Route path="/driver/profile" element={<ProtectedDriverRoute><DriverProfile /></ProtectedDriverRoute>} />
-                  <Route path="/driver/onboarding" element={<DriverOnboarding />} />
+                  <Route path="/driver/onboarding" element={<ProtectedDriverRoute skipApprovalCheck><DriverOnboarding /></ProtectedDriverRoute>} />
                   <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
                     <Route index element={<AdminDashboard />} />
                     <Route path="drivers" element={<DriversManagement />} />
