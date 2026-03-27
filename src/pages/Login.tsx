@@ -118,11 +118,10 @@ export default function Login() {
       console.error("Driver record creation error:", driverError);
     }
 
-    // Assign driver role
-    const { error: roleError } = await supabase.from("user_roles").insert({
-      user_id: authData.user.id,
-      role: "driver",
-    } as any);
+    // Assign driver role via security definer function
+    const { error: roleError } = await supabase.rpc("assign_driver_role", {
+      _user_id: authData.user.id,
+    });
 
     if (roleError) {
       console.error("Role assignment error:", roleError);
