@@ -28,6 +28,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Try to load profile from cache first (Offline/Fast Support)
+    const cachedProfile = localStorage.getItem("sg_profile");
+    if (cachedProfile) {
+      try {
+        setProfile(JSON.parse(cachedProfile));
+        // We still set loading to true initially to verify session
+      } catch (e) {
+        localStorage.removeItem("sg_profile");
+      }
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -35,16 +46,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
+        setProfile(null);
+        localStorage.removeItem("sg_profile");
         setIsLoading(false);
       }
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
+      
+      if (event === "SIGNED_IN" && session?.user) {
         await fetchProfile(session.user.id);
+      } else if (event === "SIGNED_OUT") {
+        setProfile(null);
+        localStorage.removeItem("sg_profile");
+        setIsLoading(false);
+      } else if (session?.user) {
+        // Refresh profile if needed but don't block
+        fetchProfile(session.user.id);
       } else {
         setProfile(null);
         setIsLoading(false);
@@ -68,25 +89,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (profileRes.error) {
         console.error("Error fetching profile:", profileRes.error);
-        setProfile(null);
+        // Don't clear profile if we have cache and network fails
+        if (!localStorage.getItem("sg_profile")) setProfile(null);
       } else if (profileRes.data) {
         const { is_admin, is_driver } = loginInfoRes.data as any || {};
         let role: UserRole = "passenger";
         if (is_admin) role = "admin";
         else if (is_driver) role = "driver";
 
-        setProfile({
+        const newProfile = {
           id: profileRes.data.id,
           full_name: profileRes.data.full_name ?? undefined,
           phone: profileRes.data.phone ?? undefined,
           role,
-        });
+        };
+        
+        setProfile(newProfile);
+        localStorage.setItem("sg_profile", JSON.stringify(newProfile));
       } else {
         setProfile(null);
+        localStorage.removeItem("sg_profile");
       }
     } catch (err) {
       console.error("Profile fetch failed:", err);
-      setProfile(null);
+      if (!localStorage.getItem("sg_profile")) setProfile(null);
     }
     setIsLoading(false);
   }

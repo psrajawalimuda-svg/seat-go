@@ -152,8 +152,15 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     let simInterval: any;
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        const { latitude, longitude, heading } = pos.coords;
+        const { latitude, longitude, heading, speed } = pos.coords;
         let bearing = heading || 0;
+
+        // Battery optimization: If speed is very low, update less frequently
+        const isMoving = speed && speed > 0.5; // > 0.5 m/s or ~1.8 km/h
+        const dynamicThrottle = isMoving ? THROTTLE_MS : THROTTLE_MS * 2;
+        
+        const now = Date.now();
+        if (now - lastUpdateRef.current < dynamicThrottle) return;
 
         if (lastPosRef.current && heading === null) {
           const dLon = ((longitude - lastPosRef.current[1]) * Math.PI) / 180;
@@ -186,10 +193,14 @@ export function DriverProvider({ children }: { children: ReactNode }) {
             lat += (Math.random() - 0.5) * 0.0005;
             lng += (Math.random() - 0.5) * 0.0005;
             updateDB(lat, lng, Math.random() * 360);
-          }, THROTTLE_MS);
+          }, THROTTLE_MS * 3); // Slower simulation to save resources
         }
       },
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+      { 
+        enableHighAccuracy: true, 
+        maximumAge: 5000, // Increase age to allow reuse of positions
+        timeout: 15000 
+      }
     );
 
     return () => {

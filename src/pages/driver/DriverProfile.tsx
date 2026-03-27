@@ -150,7 +150,7 @@ export default function DriverProfile() {
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 rounded-full shuttle-gradient flex items-center justify-center border-4 border-white shadow-lg overflow-hidden text-2xl font-black text-white relative group">
               {(DRIVER as any).photo_url ? (
-                <img src={(DRIVER as any).photo_url} alt="Profile" className="w-full h-full object-cover" />
+                <img src={(DRIVER as any).photo_url} alt="Profile" className="w-full h-full object-cover" loading="lazy" />
               ) : (
                 formData.name[0] || "D"
               )}

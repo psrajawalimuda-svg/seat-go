@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bus, LogIn, UserPlus, AlertCircle, Clock, XCircle } from "lucide-react";
+import { Bus, LogIn, UserPlus, AlertCircle, Clock, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -222,16 +222,28 @@ export default function Login() {
               type="submit"
               disabled={loading}
               className={cn(
-                "w-full h-14 text-lg font-black rounded-2xl gap-3 shadow-xl",
-                "shuttle-gradient text-primary-foreground"
+                "w-full h-14 text-lg font-black rounded-2xl gap-3 shadow-xl relative overflow-hidden",
+                "shuttle-gradient text-primary-foreground disabled:opacity-80"
               )}
             >
               {loading ? (
-                <span className="animate-spin">⏳</span>
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="tracking-widest uppercase text-sm">Menghubungkan...</span>
+                </div>
               ) : isSignup ? (
                 <><UserPlus size={20} /> DAFTAR DRIVER</>
               ) : (
                 <><LogIn size={20} /> MASUK</>
+              )}
+              
+              {loading && (
+                <motion.div 
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "100%" }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  className="absolute bottom-0 left-0 h-1 bg-white/30 w-full"
+                />
               )}
             </Button>
           </form>
