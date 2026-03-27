@@ -20,20 +20,49 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Client-side Rate Limiting / Lockout Check
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      const remainingSeconds = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      setError(`Terlalu banyak percobaan. Silakan coba lagi dalam ${remainingSeconds} detik.`);
+      return;
+    }
+
     setLoading(true);
     setError("");
     setPendingMessage("");
 
     const startTime = Date.now();
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    
     if (authError) {
-      setError(authError.message);
+      // Security Hardening: Generic error message to prevent enumeration
+      const genericError = "Email atau password yang Anda masukkan salah.";
+      setError(genericError);
+      
+      // Update attempts for lockout logic
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+      
+      if (newAttempts >= 5) {
+        // Lock for 1 minute after 5 failed attempts
+        setLockoutUntil(Date.now() + 60000);
+        setLoginAttempts(0);
+        toast.error("Terlalu banyak percobaan gagal. Akun dikunci sementara (60 detik).");
+      }
+      
       setLoading(false);
       return;
     }
+
+    // Reset attempts on success
+    setLoginAttempts(0);
+    setLockoutUntil(null);
 
     // Single RTT to get all role and status info
     const { data: loginInfo, error: rpcError } = await supabase.rpc("get_user_login_info", { 
