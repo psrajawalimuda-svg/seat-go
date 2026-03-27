@@ -79,22 +79,38 @@ export function useTripTracking({
         setSpeed(Math.round((currentSpeed || 0) * 3.6)); // m/s to km/h
         lastPosRef.current = newPos;
 
-        // Throttled Supabase Update
-        if (now - lastUpdateRef.current > throttleMs) {
-          lastUpdateRef.current = now;
-          supabase.from("driver_locations").upsert({
-            trip_id: activeTrip.id,
-            driver_id: activeTrip.driverId || activeTrip.driverName,
-            latitude,
-            longitude,
-            bearing: heading || 0,
-            speed: Math.round((currentSpeed || 0) * 3.6),
-            current_stop_index: currentStopIndex,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: "trip_id" }).then(({ error }) => {
-            if (error) console.error("Error updating location:", error);
-          });
-        }
+          // Throttled Supabase Update
+          if (now - lastUpdateRef.current > throttleMs) {
+            lastUpdateRef.current = now;
+            
+            // 1. Update trip-specific locations for passenger tracking
+            supabase.from("driver_locations").upsert({
+              trip_id: activeTrip.id,
+              driver_id: activeTrip.driverId || activeTrip.driverName,
+              latitude,
+              longitude,
+              bearing: heading || 0,
+              speed: Math.round((currentSpeed || 0) * 3.6),
+              current_stop_index: currentStopIndex,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: "trip_id" }).then(({ error }) => {
+              if (error) console.error("Error updating location:", error);
+            });
+
+            // 2. Update global driver profile for admin fleet map
+            // Note: We use driver_id (UUID) to update the drivers table
+            if (activeTrip.driverId) {
+              supabase.from("drivers").update({
+                latitude,
+                longitude,
+                bearing: heading || 0,
+                status: 'on_trip',
+                last_active: new Date().toISOString()
+              } as any).eq("id", activeTrip.driverId).then(({ error }) => {
+                if (error) console.error("Error updating driver profile location:", error);
+              });
+            }
+          }
       },
       (err) => {
         let msg = "Unknown geolocation error";

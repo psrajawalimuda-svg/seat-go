@@ -53,12 +53,12 @@ export default function Login() {
       if (driver) {
         if (driver.approval_status === "pending") {
           await supabase.auth.signOut();
-          setPendingMessage("Akun Anda sedang dalam proses review oleh admin. Silakan tunggu persetujuan.");
+          setPendingMessage("Akun Anda sedang dalam proses review oleh admin. Silakan lengkapi profil dan tunggu persetujuan.");
           setLoading(false);
           return;
         }
         if (driver.approval_status === "rejected") {
-          const reason = (driver as any).rejection_reason || "Tidak memenuhi persyaratan";
+          const reason = driver.rejection_reason || "Tidak memenuhi persyaratan";
           await supabase.auth.signOut();
           setPendingMessage(`Pendaftaran ditolak: ${reason}`);
           setLoading(false);

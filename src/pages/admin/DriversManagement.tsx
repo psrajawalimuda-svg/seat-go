@@ -24,6 +24,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -33,13 +36,18 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 let DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [25, 41], iconAnchor: [12, 41] });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-const createDriverIcon = (status: string, bearing: number = 0) => {
-  const color = status === 'online' ? '#22c55e' : status === 'busy' ? '#eab308' : '#94a3b8';
+const createDriverIcon = (status: string, service_type: string = 'mobil', bearing: number = 0) => {
+  const color = status === 'online' ? '#22c55e' : status === 'on_trip' ? '#3b82f6' : status === 'busy' ? '#eab308' : '#94a3b8';
+  
+  const iconSvg = service_type === 'motor' 
+    ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 17.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5zM18.5 17.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5zM15 6.5l-4 4.5h-3.5l-1-2h-3v2h2l1 2h1v1.5h8.5l.5-1.5h4v-1l-2.5-3.5h-3z"/></svg>`
+    : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L19 21l-7-4-7 4z"/></svg>`;
+
   return L.divIcon({
     className: 'driver-marker-icon',
     html: `<div style="transform: rotate(${bearing}deg); transition: all 0.5s ease;">
       <div style="width: 40px; height: 40px; border-radius: 50%; background: white; border: 3px solid ${color}; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L19 21l-7-4-7 4z"/></svg>
+        ${iconSvg}
       </div>
     </div>`,
     iconSize: [40, 40],
@@ -73,6 +81,8 @@ export default function DriversManagement() {
   const [activeTab, setActiveTab] = useState("all");
   const [viewMode, setViewMode] = useState<"table" | "map">("table");
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [serviceFilter, setServiceFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialog, setDetailDialog] = useState<DbDriver | null>(null);
   const [rejectDialog, setRejectDialog] = useState<DbDriver | null>(null);
@@ -82,11 +92,35 @@ export default function DriversManagement() {
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
 
   useEffect(() => {
-    const channel = supabase.channel("drivers-all")
-      .on("postgres_changes", { event: "*", schema: "public", table: "drivers" }, () => {
+    // Subscribe to all changes in drivers table for real-time tracking
+    const channel = supabase.channel("drivers-realtime")
+      .on("postgres_changes", { 
+        event: "UPDATE", 
+        schema: "public", 
+        table: "drivers" 
+      }, (payload) => {
+        // Optimistically update the cache for location changes
+        qc.setQueryData(["drivers"], (old: DbDriver[] | undefined) => {
+          if (!old) return old;
+          return old.map(d => d.id === payload.new.id ? { ...d, ...payload.new } : d);
+        });
+      })
+      .on("postgres_changes", { 
+        event: "INSERT", 
+        schema: "public", 
+        table: "drivers" 
+      }, () => {
+        qc.invalidateQueries({ queryKey: ["drivers"] });
+      })
+      .on("postgres_changes", { 
+        event: "DELETE", 
+        schema: "public", 
+        table: "drivers" 
+      }, () => {
         qc.invalidateQueries({ queryKey: ["drivers"] });
       })
       .subscribe();
+
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
@@ -95,13 +129,22 @@ export default function DriversManagement() {
   const rejectedDrivers = useMemo(() => drivers.filter(d => d.approval_status === "rejected"), [drivers]);
 
   const displayDrivers = useMemo(() => {
-    const base = activeTab === "pending" ? pendingDrivers : activeTab === "rejected" ? rejectedDrivers : approvedDrivers;
+    let base = activeTab === "pending" ? pendingDrivers : activeTab === "rejected" ? rejectedDrivers : approvedDrivers;
+    
+    // Apply filters
+    if (statusFilter !== "all") {
+      base = base.filter(d => d.status === statusFilter);
+    }
+    if (serviceFilter !== "all") {
+      base = base.filter(d => d.service_type === serviceFilter);
+    }
+
     return base.filter(d =>
       d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       d.plate.toLowerCase().includes(searchQuery.toLowerCase()) ||
       d.phone.includes(searchQuery)
     );
-  }, [activeTab, pendingDrivers, approvedDrivers, rejectedDrivers, searchQuery]);
+  }, [activeTab, pendingDrivers, approvedDrivers, rejectedDrivers, searchQuery, statusFilter, serviceFilter]);
 
   const stats = useMemo(() => ({
     total: approvedDrivers.length,
@@ -228,22 +271,48 @@ export default function DriversManagement() {
         </TabsList>
       </Tabs>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-30" />
-        <Input placeholder="Cari nama, plat, atau telepon..." className="pl-12 h-14 rounded-2xl border-2 font-bold text-lg focus:border-primary" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+      {/* Search & Filters */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-30" />
+          <Input placeholder="Cari nama, plat, atau telepon..." className="pl-12 h-14 rounded-2xl border-2 font-bold text-lg focus:border-primary" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px] h-14 rounded-2xl border-2 font-black uppercase text-[10px] tracking-widest">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Status</SelectItem>
+              <SelectItem value="online">Online</SelectItem>
+              <SelectItem value="on_trip">On Trip</SelectItem>
+              <SelectItem value="busy">Sibuk</SelectItem>
+              <SelectItem value="offline">Offline</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={serviceFilter} onValueChange={setServiceFilter}>
+            <SelectTrigger className="w-[140px] h-14 rounded-2xl border-2 font-black uppercase text-[10px] tracking-widest">
+              <SelectValue placeholder="Layanan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Layanan</SelectItem>
+              <SelectItem value="mobil">Mobil</SelectItem>
+              <SelectItem value="motor">Motor</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {viewMode === "table" ? (
-        <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
+        <Card className="rounded-[2.5rem] border-2 shadow-xl overflow-hidden">
           <CardContent className="p-0">
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest px-6">Driver Info</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Plate/License</TableHead>
+                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Plate/Vehicle</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Status</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Dokumen</TableHead>
+                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Layanan</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest text-right px-6">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -261,11 +330,6 @@ export default function DriversManagement() {
                           <div className="flex items-center gap-2 text-[10px] font-bold opacity-50 uppercase tracking-widest">
                             <Phone className="h-3 w-3" /> {d.phone}
                           </div>
-                          {d.email && (
-                            <div className="flex items-center gap-2 text-[10px] font-bold opacity-50 uppercase tracking-widest">
-                              <Mail className="h-3 w-3" /> {d.email}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </TableCell>
@@ -284,21 +348,19 @@ export default function DriversManagement() {
                         "rounded-lg font-black uppercase text-[9px] tracking-widest px-2 py-0.5",
                         d.approval_status === "pending" ? "bg-yellow-500" :
                         d.approval_status === "rejected" ? "bg-destructive" :
-                        d.status === 'online' ? "bg-green-500" : d.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
+                        d.status === 'online' ? "bg-green-500" : 
+                        d.status === 'on_trip' ? "bg-blue-500" :
+                        d.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
                       )}>
                         {d.approval_status === "pending" ? "PENDING" :
-                         d.approval_status === "rejected" ? "DITOLAK" : d.status}
+                         d.approval_status === "rejected" ? "DITOLAK" : 
+                         d.status === 'on_trip' ? "ON TRIP" : d.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        {d.ktp_url && <Badge variant="outline" className="text-[8px] px-1.5 py-0">KTP ✓</Badge>}
-                        {d.sim_url && <Badge variant="outline" className="text-[8px] px-1.5 py-0">SIM ✓</Badge>}
-                        {d.photo_url && <Badge variant="outline" className="text-[8px] px-1.5 py-0">Foto ✓</Badge>}
-                        {!d.ktp_url && !d.sim_url && !d.photo_url && (
-                          <span className="text-[10px] opacity-40 font-bold">Belum ada</span>
-                        )}
-                      </div>
+                      <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest">
+                        {d.service_type || 'mobil'}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right px-6">
                       <div className="flex justify-end gap-1">
@@ -344,17 +406,50 @@ export default function DriversManagement() {
           <Card className="xl:col-span-3 rounded-[2.5rem] overflow-hidden border-2 shadow-xl relative z-0">
             <MapContainer center={[-6.2088, 106.8456]} zoom={12} className="h-full w-full">
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {displayDrivers.map(d => d.latitude && d.longitude && (
-                <Marker key={d.id} position={[d.latitude, d.longitude]} icon={createDriverIcon(d.status, d.bearing)} eventHandlers={{ click: () => setSelectedDriverId(d.id) }}>
-                  <Popup className="driver-map-popup">
-                    <div className="p-2 min-w-[150px]">
-                      <p className="font-black uppercase text-xs text-primary leading-none mb-1">{d.name}</p>
-                      <p className="text-[10px] font-black uppercase opacity-50 mb-2">{d.plate}</p>
-                      <Badge className={cn("text-[8px] font-black uppercase px-1.5 py-0", d.status === 'online' ? "bg-green-500" : d.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400")}>{d.status}</Badge>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+              <MarkerClusterGroup
+                chunkedLoading
+                maxClusterRadius={50}
+                showCoverageOnHover={false}
+              >
+                {displayDrivers.map(d => d.latitude != null && d.longitude != null && (
+                  <Marker key={d.id} position={[d.latitude, d.longitude]} icon={createDriverIcon(d.status, d.service_type, d.bearing)} eventHandlers={{ click: () => setSelectedDriverId(d.id) }}>
+                    <Popup className="driver-map-popup">
+                      <div className="p-4 min-w-[200px] space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10 border-2">
+                            {d.photo_url && <AvatarImage src={d.photo_url} />}
+                            <AvatarFallback className="font-black uppercase">{d.name[0]}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-black uppercase text-xs text-primary leading-none mb-1">{d.name}</p>
+                            <p className="text-[9px] font-black uppercase opacity-50">{d.plate}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-muted p-2 rounded-lg">
+                            <p className="text-[8px] font-black uppercase opacity-50 mb-0.5">Rating</p>
+                            <p className="text-xs font-black">⭐ {d.rating.toFixed(1)}</p>
+                          </div>
+                          <div className="bg-muted p-2 rounded-lg">
+                            <p className="text-[8px] font-black uppercase opacity-50 mb-0.5">Layanan</p>
+                            <p className="text-xs font-black uppercase">{d.service_type || 'mobil'}</p>
+                          </div>
+                        </div>
+
+                        <Badge className={cn(
+                          "w-full justify-center text-[8px] font-black uppercase px-1.5 py-1", 
+                          d.status === 'online' ? "bg-green-500" : 
+                          d.status === 'on_trip' ? "bg-blue-500" :
+                          d.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
+                        )}>
+                          {d.status === 'on_trip' ? "SEDANG BERTUGAS" : d.status}
+                        </Badge>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MarkerClusterGroup>
               {selectedDriverId && <ChangeView center={[drivers.find(d => d.id === selectedDriverId)?.latitude || -6.2088, drivers.find(d => d.id === selectedDriverId)?.longitude || 106.8456]} />}
             </MapContainer>
             <div className="absolute top-4 right-4 z-10 bg-background/90 backdrop-blur p-2 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
@@ -369,10 +464,15 @@ export default function DriversManagement() {
               <div className="divide-y">
                 {displayDrivers.map(d => (
                   <div key={d.id} className={cn("p-4 hover:bg-muted/30 transition-colors cursor-pointer group", selectedDriverId === d.id && "bg-primary/5 border-l-4 border-primary")}
-                    onClick={() => { setSelectedDriverId(d.id); if (d.latitude && d.longitude) setViewMode("map"); }}>
+                    onClick={() => { setSelectedDriverId(d.id); if (d.latitude != null && d.longitude != null) setViewMode("map"); }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={cn("w-2 h-2 rounded-full", d.status === 'online' ? "bg-green-500" : d.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400")} />
+                        <div className={cn(
+                          "w-2 h-2 rounded-full", 
+                          d.status === 'online' ? "bg-green-500" : 
+                          d.status === 'on_trip' ? "bg-blue-500" :
+                          d.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
+                        )} />
                         <div>
                           <p className="font-black uppercase tracking-tight text-sm leading-none mb-1">{d.name}</p>
                           <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">{d.plate}</p>

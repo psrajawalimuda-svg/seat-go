@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 export default function DriverProfile() {
   const { data: drivers, isLoading } = useDrivers();
@@ -20,11 +21,11 @@ export default function DriverProfile() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [uploading, setUploading] = useState<string | null>(null);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
 
-  const ktpRef = useRef<HTMLInputElement>(null);
-  const simRef = useRef<HTMLInputElement>(null);
-  const photoRef = useRef<HTMLInputElement>(null);
+  const ktpInputRef = useRef<HTMLInputElement>(null);
+  const simInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   
   const DRIVER = useMemo(() => {
     if (!drivers || !user) return null;
@@ -78,22 +79,31 @@ export default function DriverProfile() {
     }
   };
 
-  const handleFileUpload = async (file: File, type: "ktp" | "sim" | "photo") => {
-    if (!user || !DRIVER) return;
-    setUploading(type);
-    try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/${type}.${ext}`;
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'ktp' | 'sim' | 'photo') => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !DRIVER) return;
 
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Ukuran file terlalu besar. Maksimal 2MB.");
+      return;
+    }
+
+    setUploadingType(type);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${type}.${fileExt}`;
+    const filePath = `${user.id}/${fileName}`;
+
+    try {
       const { error: uploadError } = await supabase.storage
-        .from("driver-documents")
-        .upload(path, file, { upsert: true });
+        .from('driver-documents')
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage
-        .from("driver-documents")
-        .getPublicUrl(path);
+        .from('driver-documents')
+        .getPublicUrl(filePath);
 
       const columnMap = { ktp: "ktp_url", sim: "sim_url", photo: "photo_url" };
       const { error: updateError } = await supabase
@@ -103,11 +113,11 @@ export default function DriverProfile() {
 
       if (updateError) throw updateError;
 
-      toast.success(`${type.toUpperCase()} berhasil diupload!`);
+      toast.success(`${type.toUpperCase()} berhasil diunggah!`);
     } catch (err: any) {
-      toast.error(`Gagal upload ${type}: ${err.message}`);
+      toast.error(`Gagal mengunggah ${type.toUpperCase()}: ${err.message}`);
     } finally {
-      setUploading(null);
+      setUploadingType(null);
     }
   };
 
@@ -123,12 +133,6 @@ export default function DriverProfile() {
 
   if (!DRIVER) return null;
 
-  const docItems = [
-    { key: "ktp" as const, label: "KTP", url: (DRIVER as any).ktp_url, ref: ktpRef, icon: FileText },
-    { key: "sim" as const, label: "SIM", url: (DRIVER as any).sim_url, ref: simRef, icon: FileText },
-    { key: "photo" as const, label: "Foto Profil", url: (DRIVER as any).photo_url, ref: photoRef, icon: Camera },
-  ];
-
   return (
     <div className="mobile-container bg-background pb-24">
       <ScreenHeader title="Profil Saya" />
@@ -136,17 +140,34 @@ export default function DriverProfile() {
       <div className="px-4 py-4 space-y-4">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="shuttle-card-elevated">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-full shuttle-gradient flex items-center justify-center border-4 border-white shadow-lg overflow-hidden text-2xl font-black text-white">
+            <div className="w-16 h-16 rounded-full shuttle-gradient flex items-center justify-center border-4 border-white shadow-lg overflow-hidden text-2xl font-black text-white relative group">
               {(DRIVER as any).photo_url ? (
                 <img src={(DRIVER as any).photo_url} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 formData.name[0] || "D"
               )}
+              <button 
+                onClick={() => photoInputRef.current?.click()}
+                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+              >
+                <Camera size={20} className="text-white" />
+              </button>
+              <input type="file" ref={photoInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'photo')} />
             </div>
             <div className="flex-1">
-              <h2 className="text-lg font-black uppercase italic tracking-tight text-foreground leading-none mb-1">
-                {formData.name}
-              </h2>
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-lg font-black uppercase italic tracking-tight text-foreground leading-none">
+                  {formData.name}
+                </h2>
+                <Badge className={cn(
+                  "text-[8px] font-black uppercase tracking-widest px-1.5 py-0",
+                  (DRIVER as any).approval_status === 'approved' ? "bg-green-500/10 text-green-600 border-green-200" :
+                  (DRIVER as any).approval_status === 'rejected' ? "bg-destructive/10 text-destructive border-destructive/20" :
+                  "bg-yellow-500/10 text-yellow-600 border-yellow-200"
+                )}>
+                  {(DRIVER as any).approval_status || 'pending'}
+                </Badge>
+              </div>
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{user?.email}</p>
             </div>
             {!isEditing ? (
@@ -186,7 +207,7 @@ export default function DriverProfile() {
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-dashed">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Status Kendaraan</p>
-                <Badge variant="outline" className="bg-zinc-900 text-white border-0 font-black px-3 py-1">{formData.plate}</Badge>
+                <Badge variant="outline" className="bg-zinc-900 text-white border-0 font-black px-3 py-1">{(DRIVER as any).assigned_vehicle || formData.plate || "-"}</Badge>
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Telepon</p>
@@ -196,60 +217,50 @@ export default function DriverProfile() {
           )}
         </motion.div>
 
-        {/* Document Upload Section */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="shuttle-card space-y-4">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Dokumen & Foto</h3>
-          
-          {docItems.map((doc) => (
-            <div key={doc.key} className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  {doc.url ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <doc.icon className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-bold">{doc.label}</p>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                    {doc.url ? "Terupload" : "Belum diupload"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {doc.url && (
-                  <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="ghost" size="sm" className="rounded-lg text-[10px] font-bold uppercase h-8">
-                      Lihat
-                    </Button>
-                  </a>
+        {/* Document Section */}
+        <div className="shuttle-card space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Persyaratan Dokumen</h3>
+            {(DRIVER as any).approval_status === 'rejected' && (
+              <Badge variant="destructive" className="text-[8px] animate-pulse">Perlu Revisi</Badge>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { type: 'ktp' as const, label: 'KTP (Identitas)', icon: FileText, ref: ktpInputRef, url: (DRIVER as any).ktp_url },
+              { type: 'sim' as const, label: 'SIM (Lisensi)', icon: ShieldCheck, ref: simInputRef, url: (DRIVER as any).sim_url },
+            ].map((doc) => (
+              <div 
+                key={doc.type} 
+                onClick={() => doc.ref.current?.click()}
+                className={cn(
+                  "relative p-4 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all active:scale-95",
+                  doc.url ? "border-green-500/30 bg-green-500/5" : "border-muted hover:border-primary/50 hover:bg-primary/5"
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-lg text-[10px] font-bold uppercase h-8"
-                  disabled={uploading === doc.key}
-                  onClick={() => doc.ref.current?.click()}
-                >
-                  {uploading === doc.key ? "⏳" : <Upload className="w-3 h-3 mr-1" />}
-                  {doc.url ? "Ganti" : "Upload"}
-                </Button>
-                <input
-                  ref={doc.ref}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file, doc.key);
-                    e.target.value = "";
-                  }}
-                />
+              >
+                {uploadingType === doc.type ? (
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
+                ) : doc.url ? (
+                  <CheckCircle2 className="w-6 h-6 text-green-500" />
+                ) : (
+                  <Upload className="w-6 h-6 text-muted-foreground" />
+                )}
+                <p className="text-[10px] font-black uppercase text-center leading-tight">{doc.label}</p>
+                <input type="file" ref={doc.ref} className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, doc.type)} />
+                {doc.url && (
+                  <div className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full" />
+                )}
               </div>
+            ))}
+          </div>
+          {(DRIVER as any).rejection_reason && (DRIVER as any).approval_status === 'rejected' && (
+            <div className="p-3 bg-destructive/5 border border-destructive/20 rounded-xl">
+              <p className="text-[9px] font-black uppercase text-destructive mb-1">Alasan Penolakan:</p>
+              <p className="text-xs font-medium text-destructive/80 italic">"{(DRIVER as any).rejection_reason}"</p>
             </div>
-          ))}
-        </motion.div>
+          )}
+        </div>
 
         <div className="grid grid-cols-3 gap-3">
           {[
@@ -299,4 +310,25 @@ export default function DriverProfile() {
       <DriverBottomNav />
     </div>
   );
+}
+
+// Missing icon
+function ShieldCheck(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  )
 }

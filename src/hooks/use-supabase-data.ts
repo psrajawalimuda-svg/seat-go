@@ -7,10 +7,9 @@ export interface DbDriver {
   id: string;
   name: string;
   phone: string;
-  email?: string;
-  license_number?: string;
   plate: string;
-  status: string;
+  status: string; // online, offline, busy, on_trip
+  service_type: "motor" | "mobil";
   rating: number;
   total_trips: number;
   latitude?: number;
@@ -18,13 +17,13 @@ export interface DbDriver {
   bearing?: number;
   last_active?: string;
   user_id?: string;
-  created_at: string;
-  approval_status?: string;
+  approval_status: string; // pending, approved, rejected
   ktp_url?: string;
   sim_url?: string;
   photo_url?: string;
   rejection_reason?: string;
   assigned_vehicle?: string;
+  created_at: string;
 }
 
 export interface DbTrip {

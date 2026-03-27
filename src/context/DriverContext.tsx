@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from "react";
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef } from "react";
 import { Trip, Booking } from "@/data/shuttle-data";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
@@ -104,7 +104,10 @@ export function DriverProvider({ children }: { children: ReactNode }) {
       try {
         const { error } = await supabase
           .from("drivers")
-          .update({ status: online ? "online" : "offline" } as any)
+          .update({ 
+            status: online ? "online" : "offline",
+            last_active: new Date().toISOString()
+          } as any)
           .eq("user_id", user.id);
         
         if (error) console.error("Error updating driver status:", error);
@@ -113,6 +116,63 @@ export function DriverProvider({ children }: { children: ReactNode }) {
       }
     }
   };
+
+  // --- Global Location Tracking for Online Drivers ---
+  const lastUpdateRef = useRef<number>(0);
+  const lastPosRef = useRef<[number, number] | null>(null);
+
+  useEffect(() => {
+    if (!isOnline || !user) return;
+
+    const THROTTLE_MS = 5000; // Update location every 5 seconds
+
+    const updateDB = async (lat: number, lng: number, bearing: number) => {
+      const now = Date.now();
+      if (now - lastUpdateRef.current < THROTTLE_MS) return;
+      lastUpdateRef.current = now;
+
+      try {
+        const { error } = await supabase
+          .from("drivers")
+          .update({
+            latitude: lat,
+            longitude: lng,
+            bearing: bearing,
+            last_active: new Date().toISOString(),
+            // Also update status to 'on_trip' if activeTrip exists
+            status: activeTrip ? "on_trip" : "online"
+          } as any)
+          .eq("user_id", user.id);
+
+        if (error) console.error("Global tracking error:", error);
+      } catch (err) {
+        console.error("Failed to update global location:", err);
+      }
+    };
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, heading } = pos.coords;
+        let bearing = heading || 0;
+
+        if (lastPosRef.current && heading === null) {
+          const dLon = ((longitude - lastPosRef.current[1]) * Math.PI) / 180;
+          const lat1 = (lastPosRef.current[0] * Math.PI) / 180;
+          const lat2 = (latitude * Math.PI) / 180;
+          const y = Math.sin(dLon) * Math.cos(lat2);
+          const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+          bearing = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+        }
+
+        lastPosRef.current = [latitude, longitude];
+        updateDB(latitude, longitude, bearing);
+      },
+      (err) => console.error("Global geolocation error:", err),
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [isOnline, user?.id, !!activeTrip]);
 
   const playFeedback = useCallback((type: "success" | "error" | "action") => {
     console.log(`[Audio Feedback] ${type}`);
