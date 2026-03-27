@@ -66,11 +66,7 @@ export default function DriversManagement() {
   const [rejectReason, setRejectReason] = useState("");
   const [form, setForm] = useState<DriverForm>(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
 
-  const handleMarkerClick = useCallback((id: string) => {
-    setSelectedDriverId(id);
-  }, []);
 
   useEffect(() => {
     // Subscribe to all changes in drivers table for real-time tracking
