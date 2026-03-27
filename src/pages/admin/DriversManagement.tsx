@@ -384,66 +384,9 @@ export default function DriversManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-[700px]">
-          <Card className="xl:col-span-3 rounded-[2.5rem] overflow-hidden border-2 shadow-xl relative z-0">
-            <MapContainer center={[-6.2088, 106.8456]} zoom={12} className="h-full w-full">
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <MarkerClusterGroup
-                chunkedLoading
-                maxClusterRadius={50}
-                showCoverageOnHover={false}
-                disableClusteringAtZoom={16}
-              >
-                {displayDrivers.map(d => (
-                  <DriverMarker 
-                    key={d.id} 
-                    driver={d} 
-                    isSelected={selectedDriverId === d.id} 
-                    onClick={handleMarkerClick} 
-                  />
-                ))}
-              </MarkerClusterGroup>
-              {selectedDriverId && <ChangeView center={[drivers.find(d => d.id === selectedDriverId)?.latitude || -6.2088, drivers.find(d => d.id === selectedDriverId)?.longitude || 106.8456]} />}
-            </MapContainer>
-            <div className="absolute top-4 right-4 z-10 bg-background/90 backdrop-blur p-2 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Live Fleet Tracking
-            </div>
-          </Card>
-          <Card className="rounded-[2.5rem] border-2 shadow-xl overflow-hidden flex flex-col h-full">
-            <CardHeader className="p-6 border-b">
-              <CardTitle className="text-lg font-black uppercase tracking-tight italic">Fleet List</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 overflow-y-auto flex-1">
-              <div className="divide-y">
-                {displayDrivers.map(d => (
-                  <div key={d.id} className={cn("p-4 hover:bg-muted/30 transition-colors cursor-pointer group", selectedDriverId === d.id && "bg-primary/5 border-l-4 border-primary")}
-                    onClick={() => { setSelectedDriverId(d.id); if (d.latitude != null && d.longitude != null) setViewMode("map"); }}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-2 h-2 rounded-full", 
-                          d.status === 'online' ? "bg-green-500" : 
-                          d.status === 'on_trip' ? "bg-blue-500" :
-                          d.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
-                        )} />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-black uppercase tracking-tight text-sm leading-none">{d.name}</p>
-                            {(d.latitude == null || d.longitude == null) && (
-                              <Badge variant="outline" className="text-[7px] px-1 py-0 border-destructive text-destructive font-black">GPS OFF</Badge>
-                            )}
-                          </div>
-                          <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">{d.plate}</p>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-30 transition-opacity" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Suspense fallback={<div className="h-[700px] flex items-center justify-center"><Skeleton className="h-full w-full rounded-[2.5rem]" /></div>}>
+          <DriversMapView drivers={displayDrivers} allDrivers={drivers} />
+        </Suspense>
       )}
 
       {/* Add/Edit Dialog */}
