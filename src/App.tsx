@@ -32,6 +32,7 @@ const DriverTrips = lazy(() => import("./pages/driver/DriverTrips"));
 const DriverTripDetail = lazy(() => import("./pages/driver/DriverTripDetail"));
 const DriverPassengers = lazy(() => import("./pages/driver/DriverPassengers"));
 const DriverProfile = lazy(() => import("./pages/driver/DriverProfile"));
+const DriverOnboarding = lazy(() => import("./pages/driver/DriverOnboarding"));
 
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -96,6 +97,7 @@ const App = () => (
                   <Route path="/driver/trip/:id" element={<ProtectedDriverRoute><DriverTripDetail /></ProtectedDriverRoute>} />
                   <Route path="/driver/passengers" element={<ProtectedDriverRoute><DriverPassengers /></ProtectedDriverRoute>} />
                   <Route path="/driver/profile" element={<ProtectedDriverRoute><DriverProfile /></ProtectedDriverRoute>} />
+                  <Route path="/driver/onboarding" element={<DriverOnboarding />} />
                   <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
                     <Route index element={<AdminDashboard />} />
                     <Route path="drivers" element={<DriversManagement />} />
