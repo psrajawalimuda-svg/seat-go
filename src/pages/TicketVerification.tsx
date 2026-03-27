@@ -207,7 +207,7 @@ export default function TicketVerification() {
               {/* Security info */}
               <div className="flex items-center gap-2 justify-center opacity-30">
                 <ShieldCheck size={12} />
-                <p className="text-[8px] font-black uppercase tracking-widest">Verified by ShuttleGo Security System</p>
+                <p className="text-[8px] font-black uppercase tracking-widest">Verified by PYU-GO Security System</p>
               </div>
             </motion.div>
           )}

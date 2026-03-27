@@ -62,7 +62,7 @@ export function AdminSidebar() {
             <div className="h-8 w-8 rounded-lg shuttle-gradient flex items-center justify-center">
               <Bus className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">ShuttleGo</span>
+            <span className="font-bold text-lg">PYU-GO</span>
           </div>
         )}
         {collapsed && (

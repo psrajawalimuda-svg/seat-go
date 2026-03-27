@@ -86,7 +86,7 @@ export default function TrackTicket() {
       scanner.render(
         (decodedText) => {
           // Extract ticket ID from URL if scanned from a verification link
-          // e.g., https://seat-go.com/verify/UUID
+          // e.g., https://pyu-go.com/verify/UUID
           let id = decodedText;
           if (decodedText.includes("/verify/")) {
             id = decodedText.split("/verify/").pop() || decodedText;
@@ -164,7 +164,7 @@ export default function TrackTicket() {
           <div className="relative group">
             <Ticket className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input 
-              placeholder="Contoh: SG-XXXX" 
+              placeholder="Contoh: PYU-XXXX" 
               className="h-14 pl-12 pr-4 rounded-2xl border-2 border-muted bg-muted/20 focus:border-primary focus:bg-background transition-all text-lg font-bold tracking-widest uppercase"
               value={ticketId}
               onChange={(e) => setTicketId(e.target.value)}

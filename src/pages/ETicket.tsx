@@ -41,7 +41,7 @@ export default function ETicket() {
   const qrPayload = `${window.location.origin}/verify/${booking.id}`;
 
   const ticketText = [
-    `ShuttleGo E-Ticket`,
+    `PYU-GO E-Ticket`,
     `Ref: ${bookingRef}`,
     `Passenger: ${booking.passengerName || "—"}`,
     `Phone: ${booking.passengerPhone || "—"}`,

@@ -163,7 +163,7 @@ export default function DriverOnboarding() {
       <div className="shuttle-gradient text-primary-foreground px-6 pt-12 pb-10 rounded-b-[3rem]">
         <div className="flex items-center gap-3 mb-3">
           <Bus size={28} strokeWidth={3} />
-          <h1 className="text-2xl font-black tracking-tighter uppercase italic">SEAT-GO</h1>
+          <h1 className="text-2xl font-black tracking-tighter uppercase italic">PYU-GO</h1>
         </div>
         <p className="text-sm font-bold uppercase tracking-widest opacity-80">Lengkapi Profil Driver</p>
 

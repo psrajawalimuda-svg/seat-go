@@ -33,7 +33,7 @@ export default function Home() {
             <Bus className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-primary-foreground">ShuttleGo</h1>
+            <h1 className="text-xl font-bold text-primary-foreground">PYU-GO</h1>
             <p className="text-xs text-primary-foreground/70">Fast & reliable shuttle booking</p>
           </div>
           <Button 
@@ -180,7 +180,7 @@ export default function Home() {
         transition={{ delay: 0.4 }}
         className="px-5 mt-6 pb-8"
       >
-        <h3 className="text-sm font-bold text-foreground mb-3">Why ShuttleGo?</h3>
+        <h3 className="text-sm font-bold text-foreground mb-3">Why PYU-GO?</h3>
         <div className="grid grid-cols-3 gap-3">
           {[
             { icon: "🛡️", label: "Safe & Reliable" },
