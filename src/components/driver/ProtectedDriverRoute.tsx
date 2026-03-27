@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, XCircle, AlertCircle, LogOut } from "lucide-react";
+import { Clock, XCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function ProtectedDriverRoute({ children }: { children: React.ReactNode }) {
@@ -87,9 +87,4 @@ export function ProtectedDriverRoute({ children }: { children: React.ReactNode }
   }
 
   return <>{children}</>;
-}
-
-// Add missing cn helper for the component
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(" ");
 }
