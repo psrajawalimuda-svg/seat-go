@@ -50,61 +50,6 @@ const initialForm: DriverForm = {
   assigned_vehicle: "" 
 };
 
-function ChangeView({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => { map.setView(center); }, [center, map]);
-  return null;
-}
-
-// Memoized Marker component for performance
-const DriverMarker = memo(({ driver, isSelected, onClick }: { driver: DbDriver, isSelected: boolean, onClick: (id: string) => void }) => {
-  if (!driver.latitude || !driver.longitude) return null;
-  
-  return (
-    <Marker 
-      position={[driver.latitude, driver.longitude]} 
-      icon={createDriverIcon(driver.status, driver.service_type, driver.bearing)} 
-      eventHandlers={{ click: () => onClick(driver.id) }}
-    >
-      <Popup className="driver-map-popup">
-        <div className="p-4 min-w-[200px] space-y-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 border-2">
-              {driver.photo_url && <AvatarImage src={driver.photo_url} />}
-              <AvatarFallback className="font-black uppercase">{driver.name[0]}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-black uppercase text-xs text-primary leading-none mb-1">{driver.name}</p>
-              <p className="text-[9px] font-black uppercase opacity-50">{driver.plate}</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-muted p-2 rounded-lg">
-              <p className="text-[8px] font-black uppercase opacity-50 mb-0.5">Rating</p>
-              <p className="text-xs font-black">⭐ {driver.rating.toFixed(1)}</p>
-            </div>
-            <div className="bg-muted p-2 rounded-lg">
-              <p className="text-[8px] font-black uppercase opacity-50 mb-0.5">Layanan</p>
-              <p className="text-xs font-black uppercase">{driver.service_type || 'mobil'}</p>
-            </div>
-          </div>
-
-          <Badge className={cn(
-            "w-full justify-center text-[8px] font-black uppercase px-1.5 py-1", 
-            driver.status === 'online' ? "bg-green-500" : 
-            driver.status === 'on_trip' ? "bg-blue-500" :
-            driver.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
-          )}>
-            {driver.status === 'on_trip' ? "SEDANG BERTUGAS" : driver.status}
-          </Badge>
-        </div>
-      </Popup>
-    </Marker>
-  );
-});
-
-DriverMarker.displayName = "DriverMarker";
 
 export default function DriversManagement() {
   const { data: drivers = [], isLoading, upsert } = useDrivers();
