@@ -392,6 +392,9 @@ export default function DriversManagement() {
             <DialogTitle className="text-2xl font-black uppercase tracking-tighter italic">
               {form.id ? "Edit Driver" : "Tambah Driver"}
             </DialogTitle>
+            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest opacity-50">
+              {form.id ? "Perbarui informasi profil dan kendaraan driver" : "Daftarkan driver baru ke dalam sistem"}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
