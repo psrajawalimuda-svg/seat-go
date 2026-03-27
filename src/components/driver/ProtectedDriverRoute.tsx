@@ -15,7 +15,7 @@ export function ProtectedDriverRoute({ children }: { children: React.ReactNode }
       if (!user) return null;
       const { data, error } = await supabase
         .from("drivers")
-        .select("approval_status, rejection_reason")
+        .select("approval_status, rejection_reason, ktp_url, sim_url, photo_url")
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
