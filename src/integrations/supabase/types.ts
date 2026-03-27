@@ -99,52 +99,70 @@ export type Database = {
       }
       drivers: {
         Row: {
+          approval_status: string
+          assigned_vehicle: string | null
           bearing: number | null
           created_at: string
           email: string | null
           id: string
+          ktp_url: string | null
           last_active: string | null
           latitude: number | null
           license_number: string | null
           longitude: number | null
           name: string
           phone: string
+          photo_url: string | null
           plate: string
           rating: number
+          rejection_reason: string | null
+          sim_url: string | null
           status: string
           total_trips: number
           user_id: string | null
         }
         Insert: {
+          approval_status?: string
+          assigned_vehicle?: string | null
           bearing?: number | null
           created_at?: string
           email?: string | null
           id?: string
+          ktp_url?: string | null
           last_active?: string | null
           latitude?: number | null
           license_number?: string | null
           longitude?: number | null
           name: string
           phone: string
+          photo_url?: string | null
           plate: string
           rating?: number
+          rejection_reason?: string | null
+          sim_url?: string | null
           status?: string
           total_trips?: number
           user_id?: string | null
         }
         Update: {
+          approval_status?: string
+          assigned_vehicle?: string | null
           bearing?: number | null
           created_at?: string
           email?: string | null
           id?: string
+          ktp_url?: string | null
           last_active?: string | null
           latitude?: number | null
           license_number?: string | null
           longitude?: number | null
           name?: string
           phone?: string
+          photo_url?: string | null
           plate?: string
           rating?: number
+          rejection_reason?: string | null
+          sim_url?: string | null
           status?: string
           total_trips?: number
           user_id?: string | null
@@ -329,6 +347,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_driver_role: { Args: { _user_id: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

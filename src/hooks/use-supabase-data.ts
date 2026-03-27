@@ -10,7 +10,7 @@ export interface DbDriver {
   email?: string;
   license_number?: string;
   plate: string;
-  status: string; // online, offline, busy
+  status: string;
   rating: number;
   total_trips: number;
   latitude?: number;
@@ -19,6 +19,12 @@ export interface DbDriver {
   last_active?: string;
   user_id?: string;
   created_at: string;
+  approval_status?: string;
+  ktp_url?: string;
+  sim_url?: string;
+  photo_url?: string;
+  rejection_reason?: string;
+  assigned_vehicle?: string;
 }
 
 export interface DbTrip {
