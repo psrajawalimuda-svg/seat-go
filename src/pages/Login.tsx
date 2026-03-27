@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bus, LogIn, UserPlus, AlertCircle } from "lucide-react";
+import { Bus, LogIn, UserPlus, AlertCircle, Clock, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ export default function Login() {
   const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pendingMessage, setPendingMessage] = useState("");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +24,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setPendingMessage("");
 
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
@@ -41,6 +43,29 @@ export default function Login() {
 
     const { data: isDriver } = await supabase.rpc("has_role", { _user_id: authData.user.id, _role: "driver" });
     if (isDriver) {
+      // Check driver approval status
+      const { data: driver } = await supabase
+        .from("drivers")
+        .select("approval_status, rejection_reason")
+        .eq("user_id", authData.user.id)
+        .maybeSingle();
+
+      if (driver) {
+        if (driver.approval_status === "pending") {
+          await supabase.auth.signOut();
+          setPendingMessage("Akun Anda sedang dalam proses review oleh admin. Silakan tunggu persetujuan.");
+          setLoading(false);
+          return;
+        }
+        if (driver.approval_status === "rejected") {
+          const reason = (driver as any).rejection_reason || "Tidak memenuhi persyaratan";
+          await supabase.auth.signOut();
+          setPendingMessage(`Pendaftaran ditolak: ${reason}`);
+          setLoading(false);
+          return;
+        }
+      }
+
       toast.success("Login driver berhasil!");
       navigate("/driver");
       return;
@@ -55,6 +80,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setPendingMessage("");
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -77,22 +103,33 @@ export default function Login() {
       return;
     }
 
-    // Try to link to existing driver record by phone
-    const { data: driverMatch } = await supabase
-      .from("drivers")
-      .select("id")
-      .eq("phone", phone)
-      .is("user_id", null)
-      .maybeSingle();
+    // Create a pending driver record
+    const { error: driverError } = await supabase.from("drivers").insert({
+      name: fullName,
+      phone,
+      email,
+      plate: "-",
+      status: "offline",
+      user_id: authData.user.id,
+      approval_status: "pending",
+    } as any);
 
-    if (driverMatch) {
-      await supabase
-        .from("drivers")
-        .update({ user_id: authData.user.id })
-        .eq("id", driverMatch.id);
+    if (driverError) {
+      console.error("Driver record creation error:", driverError);
+    }
+
+    // Assign driver role
+    const { error: roleError } = await supabase.from("user_roles").insert({
+      user_id: authData.user.id,
+      role: "driver",
+    } as any);
+
+    if (roleError) {
+      console.error("Role assignment error:", roleError);
     }
 
     toast.success("Pendaftaran berhasil! Silakan cek email untuk verifikasi.");
+    setPendingMessage("Pendaftaran berhasil! Setelah verifikasi email, akun Anda akan direview oleh admin.");
     setIsSignup(false);
     setLoading(false);
   };
@@ -106,7 +143,7 @@ export default function Login() {
           <h1 className="text-3xl font-black tracking-tighter uppercase italic">SEAT-GO</h1>
         </div>
         <p className="text-sm font-bold uppercase tracking-widest opacity-80">
-          {isSignup ? "Daftar Akun Baru" : "Login"}
+          {isSignup ? "Daftar Akun Driver" : "Login"}
         </p>
       </div>
 
@@ -117,6 +154,13 @@ export default function Login() {
             <div className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-bold">
               <AlertCircle size={16} />
               {error}
+            </div>
+          )}
+
+          {pendingMessage && (
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-500/10 text-yellow-700 text-sm font-bold border border-yellow-500/20">
+              {pendingMessage.includes("ditolak") ? <XCircle size={20} className="text-destructive mt-0.5 shrink-0" /> : <Clock size={20} className="mt-0.5 shrink-0" />}
+              <span>{pendingMessage}</span>
             </div>
           )}
 
@@ -182,7 +226,7 @@ export default function Login() {
               {loading ? (
                 <span className="animate-spin">⏳</span>
               ) : isSignup ? (
-                <><UserPlus size={20} /> DAFTAR</>
+                <><UserPlus size={20} /> DAFTAR DRIVER</>
               ) : (
                 <><LogIn size={20} /> MASUK</>
               )}
@@ -192,10 +236,10 @@ export default function Login() {
           <div className="text-center">
             <button
               type="button"
-              onClick={() => { setIsSignup(!isSignup); setError(""); }}
+              onClick={() => { setIsSignup(!isSignup); setError(""); setPendingMessage(""); }}
               className="text-sm font-bold text-primary hover:underline"
             >
-              {isSignup ? "Sudah punya akun? Login" : "Belum punya akun? Daftar"}
+              {isSignup ? "Sudah punya akun? Login" : "Belum punya akun? Daftar sebagai Driver"}
             </button>
           </div>
         </div>

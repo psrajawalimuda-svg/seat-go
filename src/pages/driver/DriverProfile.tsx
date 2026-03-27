@@ -1,15 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Star, Route, DollarSign, Bell, Globe, LogOut, Pencil, Save, X } from "lucide-react";
+import { Star, Route, DollarSign, Bell, Globe, LogOut, Pencil, Save, X, Upload, FileText, Camera, CheckCircle2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { DriverBottomNav } from "@/components/driver/DriverBottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useDrivers } from "@/hooks/use-supabase-data";
 import { useAuth } from "@/context/AuthContext";
-import { formatPrice } from "@/data/shuttle-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,11 @@ export default function DriverProfile() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
+
+  const ktpRef = useRef<HTMLInputElement>(null);
+  const simRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
   
   const DRIVER = useMemo(() => {
     if (!drivers || !user) return null;
@@ -32,11 +37,17 @@ export default function DriverProfile() {
     plate: DRIVER?.plate || ""
   });
 
+  // Sync form when DRIVER loads
+  useMemo(() => {
+    if (DRIVER) {
+      setForm({ name: DRIVER.name, phone: DRIVER.phone, plate: DRIVER.plate });
+    }
+  }, [DRIVER?.id]);
+
   const handleUpdate = async () => {
     if (!user || !DRIVER) return;
     setIsSaving(true);
     try {
-      // Update drivers table
       const { error: driverError } = await supabase
         .from("drivers")
         .update({ 
@@ -48,7 +59,6 @@ export default function DriverProfile() {
 
       if (driverError) throw driverError;
 
-      // Update profiles table
       const { error: profileError } = await supabase
         .from("profiles")
         .update({ 
@@ -68,6 +78,39 @@ export default function DriverProfile() {
     }
   };
 
+  const handleFileUpload = async (file: File, type: "ktp" | "sim" | "photo") => {
+    if (!user || !DRIVER) return;
+    setUploading(type);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${type}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("driver-documents")
+        .upload(path, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("driver-documents")
+        .getPublicUrl(path);
+
+      const columnMap = { ktp: "ktp_url", sim: "sim_url", photo: "photo_url" };
+      const { error: updateError } = await supabase
+        .from("drivers")
+        .update({ [columnMap[type]]: urlData.publicUrl } as any)
+        .eq("id", DRIVER.id);
+
+      if (updateError) throw updateError;
+
+      toast.success(`${type.toUpperCase()} berhasil diupload!`);
+    } catch (err: any) {
+      toast.error(`Gagal upload ${type}: ${err.message}`);
+    } finally {
+      setUploading(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="mobile-container bg-background pb-24">
@@ -80,6 +123,12 @@ export default function DriverProfile() {
 
   if (!DRIVER) return null;
 
+  const docItems = [
+    { key: "ktp" as const, label: "KTP", url: (DRIVER as any).ktp_url, ref: ktpRef, icon: FileText },
+    { key: "sim" as const, label: "SIM", url: (DRIVER as any).sim_url, ref: simRef, icon: FileText },
+    { key: "photo" as const, label: "Foto Profil", url: (DRIVER as any).photo_url, ref: photoRef, icon: Camera },
+  ];
+
   return (
     <div className="mobile-container bg-background pb-24">
       <ScreenHeader title="Profil Saya" />
@@ -88,7 +137,11 @@ export default function DriverProfile() {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="shuttle-card-elevated">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 rounded-full shuttle-gradient flex items-center justify-center border-4 border-white shadow-lg overflow-hidden text-2xl font-black text-white">
-              {formData.name[0] || "D"}
+              {(DRIVER as any).photo_url ? (
+                <img src={(DRIVER as any).photo_url} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                formData.name[0] || "D"
+              )}
             </div>
             <div className="flex-1">
               <h2 className="text-lg font-black uppercase italic tracking-tight text-foreground leading-none mb-1">
@@ -141,6 +194,61 @@ export default function DriverProfile() {
               </div>
             </div>
           )}
+        </motion.div>
+
+        {/* Document Upload Section */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="shuttle-card space-y-4">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Dokumen & Foto</h3>
+          
+          {docItems.map((doc) => (
+            <div key={doc.key} className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  {doc.url ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <doc.icon className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-bold">{doc.label}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    {doc.url ? "Terupload" : "Belum diupload"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {doc.url && (
+                  <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" size="sm" className="rounded-lg text-[10px] font-bold uppercase h-8">
+                      Lihat
+                    </Button>
+                  </a>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg text-[10px] font-bold uppercase h-8"
+                  disabled={uploading === doc.key}
+                  onClick={() => doc.ref.current?.click()}
+                >
+                  {uploading === doc.key ? "⏳" : <Upload className="w-3 h-3 mr-1" />}
+                  {doc.url ? "Ganti" : "Upload"}
+                </Button>
+                <input
+                  ref={doc.ref}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file, doc.key);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            </div>
+          ))}
         </motion.div>
 
         <div className="grid grid-cols-3 gap-3">
