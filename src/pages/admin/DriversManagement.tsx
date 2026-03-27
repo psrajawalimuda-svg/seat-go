@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, memo } from "react";
 import { 
   Plus, Pencil, Phone, Star, Mail, FileText, 
   Search, Map as MapIcon, LayoutGrid, List,
@@ -84,6 +84,56 @@ function ChangeView({ center }: { center: [number, number] }) {
   return null;
 }
 
+// Memoized Marker component for performance
+const DriverMarker = memo(({ driver, isSelected, onClick }: { driver: DbDriver, isSelected: boolean, onClick: (id: string) => void }) => {
+  if (!driver.latitude || !driver.longitude) return null;
+  
+  return (
+    <Marker 
+      position={[driver.latitude, driver.longitude]} 
+      icon={createDriverIcon(driver.status, driver.service_type, driver.bearing)} 
+      eventHandlers={{ click: () => onClick(driver.id) }}
+    >
+      <Popup className="driver-map-popup">
+        <div className="p-4 min-w-[200px] space-y-3">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10 border-2">
+              {driver.photo_url && <AvatarImage src={driver.photo_url} />}
+              <AvatarFallback className="font-black uppercase">{driver.name[0]}</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-black uppercase text-xs text-primary leading-none mb-1">{driver.name}</p>
+              <p className="text-[9px] font-black uppercase opacity-50">{driver.plate}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-muted p-2 rounded-lg">
+              <p className="text-[8px] font-black uppercase opacity-50 mb-0.5">Rating</p>
+              <p className="text-xs font-black">⭐ {driver.rating.toFixed(1)}</p>
+            </div>
+            <div className="bg-muted p-2 rounded-lg">
+              <p className="text-[8px] font-black uppercase opacity-50 mb-0.5">Layanan</p>
+              <p className="text-xs font-black uppercase">{driver.service_type || 'mobil'}</p>
+            </div>
+          </div>
+
+          <Badge className={cn(
+            "w-full justify-center text-[8px] font-black uppercase px-1.5 py-1", 
+            driver.status === 'online' ? "bg-green-500" : 
+            driver.status === 'on_trip' ? "bg-blue-500" :
+            driver.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
+          )}>
+            {driver.status === 'on_trip' ? "SEDANG BERTUGAS" : driver.status}
+          </Badge>
+        </div>
+      </Popup>
+    </Marker>
+  );
+});
+
+DriverMarker.displayName = "DriverMarker";
+
 export default function DriversManagement() {
   const { data: drivers = [], isLoading, upsert } = useDrivers();
   const qc = useQueryClient();
@@ -100,6 +150,10 @@ export default function DriversManagement() {
   const [form, setForm] = useState<DriverForm>(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+
+  const handleMarkerClick = useCallback((id: string) => {
+    setSelectedDriverId(id);
+  }, []);
 
   useEffect(() => {
     // Subscribe to all changes in drivers table for real-time tracking
@@ -421,44 +475,15 @@ export default function DriversManagement() {
                 chunkedLoading
                 maxClusterRadius={50}
                 showCoverageOnHover={false}
+                disableClusteringAtZoom={16}
               >
-                {displayDrivers.map(d => d.latitude != null && d.longitude != null && (
-                  <Marker key={d.id} position={[d.latitude, d.longitude]} icon={createDriverIcon(d.status, d.service_type, d.bearing)} eventHandlers={{ click: () => setSelectedDriverId(d.id) }}>
-                    <Popup className="driver-map-popup">
-                      <div className="p-4 min-w-[200px] space-y-3">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 border-2">
-                            {d.photo_url && <AvatarImage src={d.photo_url} />}
-                            <AvatarFallback className="font-black uppercase">{d.name[0]}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-black uppercase text-xs text-primary leading-none mb-1">{d.name}</p>
-                            <p className="text-[9px] font-black uppercase opacity-50">{d.plate}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-muted p-2 rounded-lg">
-                            <p className="text-[8px] font-black uppercase opacity-50 mb-0.5">Rating</p>
-                            <p className="text-xs font-black">⭐ {d.rating.toFixed(1)}</p>
-                          </div>
-                          <div className="bg-muted p-2 rounded-lg">
-                            <p className="text-[8px] font-black uppercase opacity-50 mb-0.5">Layanan</p>
-                            <p className="text-xs font-black uppercase">{d.service_type || 'mobil'}</p>
-                          </div>
-                        </div>
-
-                        <Badge className={cn(
-                          "w-full justify-center text-[8px] font-black uppercase px-1.5 py-1", 
-                          d.status === 'online' ? "bg-green-500" : 
-                          d.status === 'on_trip' ? "bg-blue-500" :
-                          d.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
-                        )}>
-                          {d.status === 'on_trip' ? "SEDANG BERTUGAS" : d.status}
-                        </Badge>
-                      </div>
-                    </Popup>
-                  </Marker>
+                {displayDrivers.map(d => (
+                  <DriverMarker 
+                    key={d.id} 
+                    driver={d} 
+                    isSelected={selectedDriverId === d.id} 
+                    onClick={handleMarkerClick} 
+                  />
                 ))}
               </MarkerClusterGroup>
               {selectedDriverId && <ChangeView center={[drivers.find(d => d.id === selectedDriverId)?.latitude || -6.2088, drivers.find(d => d.id === selectedDriverId)?.longitude || 106.8456]} />}
