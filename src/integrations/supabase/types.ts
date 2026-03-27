@@ -116,6 +116,7 @@ export type Database = {
           plate: string
           rating: number
           rejection_reason: string | null
+          service_type: string | null
           sim_url: string | null
           status: string
           total_trips: number
@@ -139,6 +140,7 @@ export type Database = {
           plate: string
           rating?: number
           rejection_reason?: string | null
+          service_type?: string | null
           sim_url?: string | null
           status?: string
           total_trips?: number
@@ -162,6 +164,7 @@ export type Database = {
           plate?: string
           rating?: number
           rejection_reason?: string | null
+          service_type?: string | null
           sim_url?: string | null
           status?: string
           total_trips?: number
@@ -348,10 +351,7 @@ export type Database = {
     }
     Functions: {
       assign_driver_role: { Args: { _user_id: string }; Returns: undefined }
-      get_user_login_info: {
-        Args: { _user_id: string }
-        Returns: Json
-      }
+      get_user_login_info: { Args: { _user_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
