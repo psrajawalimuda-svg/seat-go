@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, memo } from "react";
+import { useState, useMemo, useEffect, useCallback, memo, lazy, Suspense } from "react";
 import { 
   Plus, Pencil, Phone, Star, Mail, FileText, 
   Search, Map as MapIcon, LayoutGrid, List,
@@ -21,39 +21,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import "leaflet.markercluster/dist/MarkerCluster.css";
-import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import MarkerClusterGroup from "react-leaflet-cluster";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [25, 41], iconAnchor: [12, 41] });
-L.Marker.prototype.options.icon = DefaultIcon;
-
-const createDriverIcon = (status: string, service_type: string = 'mobil', bearing: number = 0) => {
-  const color = status === 'online' ? '#22c55e' : status === 'on_trip' ? '#3b82f6' : status === 'busy' ? '#eab308' : '#94a3b8';
-  
-  const iconSvg = service_type === 'motor' 
-    ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 17.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5zM18.5 17.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5zM15 6.5l-4 4.5h-3.5l-1-2h-3v2h2l1 2h1v1.5h8.5l.5-1.5h4v-1l-2.5-3.5h-3z"/></svg>`
-    : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L19 21l-7-4-7 4z"/></svg>`;
-
-  return L.divIcon({
-    className: 'driver-marker-icon',
-    html: `<div style="transform: rotate(${bearing}deg); transition: all 0.5s ease;">
-      <div style="width: 40px; height: 40px; border-radius: 50%; background: white; border: 3px solid ${color}; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-        ${iconSvg}
-      </div>
-    </div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-  });
-};
+// Lazy load map component to avoid loading Leaflet on table view
+const DriversMapView = lazy(() => import("@/components/admin/DriversMapView"));
 
 interface DriverForm {
   id?: string;
