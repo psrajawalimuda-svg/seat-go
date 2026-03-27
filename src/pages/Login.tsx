@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Bus, LogIn, UserPlus, AlertCircle, Clock, XCircle, Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 export default function Login() {
   const navigate = useNavigate();
