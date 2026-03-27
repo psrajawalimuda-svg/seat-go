@@ -79,6 +79,7 @@ export default function DriversManagement() {
         // Optimistically update the cache for location changes
         qc.setQueryData(["drivers"], (old: DbDriver[] | undefined) => {
           if (!old) return old;
+          console.log(`[Realtime] Received UPDATE for driver ${payload.new.id}`);
           return old.map(d => d.id === payload.new.id ? { ...d, ...payload.new } : d);
         });
       })
@@ -87,6 +88,7 @@ export default function DriversManagement() {
         schema: "public", 
         table: "drivers" 
       }, () => {
+        console.log("[Realtime] Received INSERT, invalidating drivers query.");
         qc.invalidateQueries({ queryKey: ["drivers"] });
       })
       .on("postgres_changes", { 
@@ -94,11 +96,25 @@ export default function DriversManagement() {
         schema: "public", 
         table: "drivers" 
       }, () => {
+        console.log("[Realtime] Received DELETE, invalidating drivers query.");
         qc.invalidateQueries({ queryKey: ["drivers"] });
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] Successfully subscribed to drivers channel!');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error(`[Realtime] Channel error:`, err);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('[Realtime] Subscription timed out.');
+        } else if (status === 'CLOSED') {
+          console.log('[Realtime] Channel closed.');
+        }
+      });
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { 
+      console.log('[Realtime] Unsubscribing from drivers channel.');
+      supabase.removeChannel(channel); 
+    };
   }, [qc]);
 
   const pendingDrivers = useMemo(() => drivers.filter(d => d.approval_status === "pending"), [drivers]);
@@ -534,6 +550,14 @@ export default function DriversManagement() {
         </DialogContent>
       </Dialog>
 
+      {/* Performance enhancement for smooth marker transitions */}
+      <style>
+        {`
+          .leaflet-marker-icon {
+            transition: transform 1s linear !important;
+          }
+        `}
+      </style>
     </div>
   );
 }
