@@ -26,6 +26,7 @@ export default function Login() {
     setError("");
     setPendingMessage("");
 
+    const startTime = Date.now();
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
       setError(authError.message);
@@ -33,37 +34,40 @@ export default function Login() {
       return;
     }
 
-    // Check roles
-    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: authData.user.id, _role: "admin" });
-    if (isAdmin) {
+    // Single RTT to get all role and status info
+    const { data: loginInfo, error: rpcError } = await supabase.rpc("get_user_login_info", { 
+      _user_id: authData.user.id 
+    });
+
+    if (rpcError) {
+      console.error("Login info error:", rpcError);
+      setError("Terjadi kesalahan saat mengambil informasi profil.");
+      setLoading(false);
+      return;
+    }
+
+    const { is_admin, is_driver, driver_status, rejection_reason } = loginInfo as any;
+    const duration = Date.now() - startTime;
+    console.log(`[Performance] Login completed in ${duration}ms`);
+
+    if (is_admin) {
       toast.success("Login admin berhasil!");
       navigate("/admin");
       return;
     }
 
-    const { data: isDriver } = await supabase.rpc("has_role", { _user_id: authData.user.id, _role: "driver" });
-    if (isDriver) {
-      // Check driver approval status
-      const { data: driver } = await supabase
-        .from("drivers")
-        .select("approval_status, rejection_reason")
-        .eq("user_id", authData.user.id)
-        .maybeSingle();
-
-      if (driver) {
-        if (driver.approval_status === "pending") {
-          await supabase.auth.signOut();
-          setPendingMessage("Akun Anda sedang dalam proses review oleh admin. Silakan lengkapi profil dan tunggu persetujuan.");
-          setLoading(false);
-          return;
-        }
-        if (driver.approval_status === "rejected") {
-          const reason = driver.rejection_reason || "Tidak memenuhi persyaratan";
-          await supabase.auth.signOut();
-          setPendingMessage(`Pendaftaran ditolak: ${reason}`);
-          setLoading(false);
-          return;
-        }
+    if (is_driver) {
+      if (driver_status === "pending") {
+        await supabase.auth.signOut();
+        setPendingMessage("Akun Anda sedang dalam proses review oleh admin. Silakan lengkapi profil dan tunggu persetujuan.");
+        setLoading(false);
+        return;
+      }
+      if (driver_status === "rejected") {
+        await supabase.auth.signOut();
+        setPendingMessage(`Pendaftaran ditolak: ${rejection_reason || "Tidak memenuhi persyaratan"}`);
+        setLoading(false);
+        return;
       }
 
       toast.success("Login driver berhasil!");

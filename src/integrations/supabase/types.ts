@@ -348,6 +348,10 @@ export type Database = {
     }
     Functions: {
       assign_driver_role: { Args: { _user_id: string }; Returns: undefined }
+      get_user_login_info: {
+        Args: { _user_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

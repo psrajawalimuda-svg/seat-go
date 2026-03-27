@@ -56,28 +56,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchProfile(userId: string) {
     try {
-      const [profileRes, roleRes] = await Promise.all([
+      // Use optimized RPC to get role and profile data in fewer RTTs
+      const [profileRes, loginInfoRes] = await Promise.all([
         supabase
           .from("profiles")
           .select("id, full_name, phone")
           .eq("id", userId)
           .maybeSingle(),
-        supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+        supabase.rpc("get_user_login_info", { _user_id: userId }),
       ]);
 
       if (profileRes.error) {
         console.error("Error fetching profile:", profileRes.error);
         setProfile(null);
       } else if (profileRes.data) {
-        // Determine role: check user_roles first, fall back to profiles.role
+        const { is_admin, is_driver } = loginInfoRes.data as any || {};
         let role: UserRole = "passenger";
-        if (roleRes.data === true) {
-          role = "admin";
-        } else {
-          // Check driver role
-          const { data: isDriver } = await supabase.rpc("has_role", { _user_id: userId, _role: "driver" });
-          if (isDriver) role = "driver";
-        }
+        if (is_admin) role = "admin";
+        else if (is_driver) role = "driver";
 
         setProfile({
           id: profileRes.data.id,
