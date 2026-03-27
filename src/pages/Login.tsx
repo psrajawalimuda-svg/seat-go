@@ -58,9 +58,20 @@ export default function Login() {
     setLoginAttempts(0);
     setLockoutUntil(null);
 
-    // Navigate immediately — AuthContext + route guards handle role detection
+    // Determine role and redirect accordingly
     toast.success("Login berhasil!");
-    navigate("/dashboard");
+    try {
+      const { data: loginInfo } = await supabase.rpc("get_user_login_info", { _user_id: (await supabase.auth.getUser()).data.user?.id ?? "" });
+      if (loginInfo?.is_admin) {
+        navigate("/admin");
+      } else if (loginInfo?.is_driver) {
+        navigate("/driver");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch {
+      navigate("/dashboard");
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {

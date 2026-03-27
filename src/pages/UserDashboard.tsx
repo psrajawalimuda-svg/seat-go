@@ -119,6 +119,16 @@ export default function UserDashboard() {
     return null;
   }
 
+  // Role-based redirect guard
+  if (profile?.role === "admin") {
+    navigate("/admin", { replace: true });
+    return null;
+  }
+  if (profile?.role === "driver") {
+    navigate("/driver", { replace: true });
+    return null;
+  }
+
   return (
     <div className="mobile-container min-h-screen bg-background pb-20">
       <div className="shuttle-gradient px-6 pt-12 pb-8 rounded-b-[40px] text-white">
