@@ -14,7 +14,7 @@ export default function Login() {
   const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [pendingMessage, setPendingMessage] = useState("");
+  
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -143,12 +143,6 @@ export default function Login() {
             </div>
           )}
 
-          {pendingMessage && (
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-500/10 text-yellow-700 text-sm font-bold border border-yellow-500/20">
-              {pendingMessage.includes("ditolak") ? <XCircle size={20} className="text-destructive mt-0.5 shrink-0" /> : <Clock size={20} className="mt-0.5 shrink-0" />}
-              <span>{pendingMessage}</span>
-            </div>
-          )}
 
           <form onSubmit={isSignup ? handleSignup : handleLogin} className="space-y-4">
             {isSignup && (
