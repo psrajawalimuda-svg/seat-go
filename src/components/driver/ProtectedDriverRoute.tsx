@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -42,47 +42,48 @@ export function ProtectedDriverRoute({ children }: { children: React.ReactNode }
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Check approval status
-  if (driver && driver.approval_status !== "approved") {
+  if (driver && driver.approval_status === "pending") {
+    // Check if documents are incomplete → redirect to onboarding
+    const needsOnboarding = !(driver as any).ktp_url || !(driver as any).sim_url || !(driver as any).photo_url;
+    if (needsOnboarding) {
+      return <Navigate to="/driver/onboarding" replace />;
+    }
+
     return (
       <div className="mobile-container min-h-screen bg-background flex flex-col items-center justify-center p-8 text-center">
-        <div className={cn(
-          "w-20 h-20 rounded-full flex items-center justify-center mb-6",
-          driver.approval_status === "pending" ? "bg-yellow-500/10 text-yellow-600" : "bg-destructive/10 text-destructive"
-        )}>
-          {driver.approval_status === "pending" ? <Clock size={40} /> : <XCircle size={40} />}
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6 bg-yellow-500/10 text-yellow-600">
+          <Clock size={40} />
         </div>
-        
-        <h1 className="text-2xl font-black uppercase italic tracking-tighter mb-2">
-          {driver.approval_status === "pending" ? "Akun Dalam Review" : "Pendaftaran Ditolak"}
-        </h1>
-        
+        <h1 className="text-2xl font-black uppercase italic tracking-tighter mb-2">Akun Dalam Review</h1>
         <p className="text-sm text-muted-foreground font-medium mb-8">
-          {driver.approval_status === "pending" 
-            ? "Tim kami sedang meninjau dokumen pendaftaran Anda. Mohon tunggu proses verifikasi selesai."
-            : `Mohon maaf, pendaftaran Anda belum dapat kami setujui. Alasan: ${driver.rejection_reason || "Tidak memenuhi kriteria."}`
-          }
+          Dokumen Anda sudah lengkap. Tim kami sedang meninjau pendaftaran Anda.
         </p>
-
-        <div className="w-full space-y-3">
-          {driver.approval_status === "pending" && (
-            <Button 
-              className="w-full h-12 rounded-xl font-bold shuttle-gradient text-white"
-              onClick={() => window.location.href = "/driver/profile"}
-            >
-              Lengkapi Dokumen Profil
-            </Button>
-          )}
-          <Button 
-            variant="outline" 
-            className="w-full h-12 rounded-xl font-bold gap-2"
-            onClick={() => signOut()}
-          >
-            <LogOut size={18} /> Keluar Akun
-          </Button>
-        </div>
+        <Button variant="outline" className="w-full h-12 rounded-xl font-bold gap-2" onClick={() => signOut()}>
+          <LogOut size={18} /> Keluar Akun
+        </Button>
       </div>
     );
+  }
+
+  if (driver && driver.approval_status === "rejected") {
+    return (
+      <div className="mobile-container min-h-screen bg-background flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6 bg-destructive/10 text-destructive">
+          <XCircle size={40} />
+        </div>
+        <h1 className="text-2xl font-black uppercase italic tracking-tighter mb-2">Pendaftaran Ditolak</h1>
+        <p className="text-sm text-muted-foreground font-medium mb-8">
+          {`Alasan: ${driver.rejection_reason || "Tidak memenuhi kriteria."}`}
+        </p>
+        <Button variant="outline" className="w-full h-12 rounded-xl font-bold gap-2" onClick={() => signOut()}>
+          <LogOut size={18} /> Keluar Akun
+        </Button>
+      </div>
+    );
+  }
+
+  if (driver && driver.approval_status !== "approved") {
+    return <Navigate to="/driver/onboarding" replace />;
   }
 
   return <>{children}</>;
