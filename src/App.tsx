@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,37 +8,58 @@ import { BookingProvider } from "@/context/BookingContext";
 import { DriverProvider } from "@/context/DriverContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedDriverRoute } from "@/components/driver/ProtectedDriverRoute";
-import Home from "./pages/Home";
-import SearchResults from "./pages/SearchResults";
-import SeatSelection from "./pages/SeatSelection";
-import Checkout from "./pages/Checkout";
-import ETicket from "./pages/ETicket";
-import TicketVerification from "./pages/TicketVerification";
-import DriverTracking from "./pages/DriverTracking";
-import TrackTicket from "./pages/TrackTicket";
-import UserDashboard from "./pages/UserDashboard";
-import NotFound from "./pages/NotFound";
-import DriverHome from "./pages/driver/DriverHome";
-import Login from "./pages/Login";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import DriverTripActive from "./pages/driver/DriverTripActive";
-import DriverTrips from "./pages/driver/DriverTrips";
-import DriverTripDetail from "./pages/driver/DriverTripDetail";
-import DriverPassengers from "./pages/driver/DriverPassengers";
-import DriverProfile from "./pages/driver/DriverProfile";
-import { AdminLayout } from "./components/admin/AdminLayout";
-import { ProtectedAdminRoute } from "./components/admin/ProtectedAdminRoute";
+import { ProtectedAdminRoute } from "@/components/admin/ProtectedAdminRoute";
+import { Skeleton } from "@/components/ui/skeleton";
 
-import AdminDashboard from "./pages/admin/Dashboard";
-import DriversManagement from "./pages/admin/DriversManagement";
-import TripsManagement from "./pages/admin/TripsManagement";
-import BookingsManagement from "./pages/admin/BookingsManagement";
-import PickupPointsManagement from "./pages/admin/PickupPointsManagement";
-import ReviewsManagement from "./pages/admin/ReviewsManagement";
-import UsersManagement from "./pages/admin/UsersManagement";
+// Lazy load all route components
+const Home = lazy(() => import("./pages/Home"));
+const SearchResults = lazy(() => import("./pages/SearchResults"));
+const SeatSelection = lazy(() => import("./pages/SeatSelection"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const ETicket = lazy(() => import("./pages/ETicket"));
+const TicketVerification = lazy(() => import("./pages/TicketVerification"));
+const DriverTracking = lazy(() => import("./pages/DriverTracking"));
+const TrackTicket = lazy(() => import("./pages/TrackTicket"));
+const UserDashboard = lazy(() => import("./pages/UserDashboard"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Login = lazy(() => import("./pages/Login"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
-const queryClient = new QueryClient();
+const DriverHome = lazy(() => import("./pages/driver/DriverHome"));
+const DriverTripActive = lazy(() => import("./pages/driver/DriverTripActive"));
+const DriverTrips = lazy(() => import("./pages/driver/DriverTrips"));
+const DriverTripDetail = lazy(() => import("./pages/driver/DriverTripDetail"));
+const DriverPassengers = lazy(() => import("./pages/driver/DriverPassengers"));
+const DriverProfile = lazy(() => import("./pages/driver/DriverProfile"));
+
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const DriversManagement = lazy(() => import("./pages/admin/DriversManagement"));
+const TripsManagement = lazy(() => import("./pages/admin/TripsManagement"));
+const BookingsManagement = lazy(() => import("./pages/admin/BookingsManagement"));
+const PickupPointsManagement = lazy(() => import("./pages/admin/PickupPointsManagement"));
+const ReviewsManagement = lazy(() => import("./pages/admin/ReviewsManagement"));
+const UsersManagement = lazy(() => import("./pages/admin/UsersManagement"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 300_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-background p-6 space-y-4">
+      <Skeleton className="h-12 w-48" />
+      <Skeleton className="h-64 w-full rounded-2xl" />
+    </div>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -48,42 +70,44 @@ const App = () => (
         <BookingProvider>
           <DriverProvider>
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/search" element={<SearchResults />} />
-                <Route path="/seats" element={<SeatSelection />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/ticket" element={<ETicket />} />
-                <Route path="/verify/:ticketId" element={<TicketVerification />} />
-                <Route path="/tracking" element={<DriverTracking />} />
-                <Route path="/track-ticket" element={<TrackTicket />} />
-                <Route path="/dashboard" element={<UserDashboard />} />
-                
-                {/* Unified login */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/driver/login" element={<Login />} />
-                <Route path="/admin/login" element={<Login />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                
-                {/* Protected driver routes */}
-                <Route path="/driver" element={<ProtectedDriverRoute><DriverHome /></ProtectedDriverRoute>} />
-                <Route path="/driver/trip/active" element={<ProtectedDriverRoute><DriverTripActive /></ProtectedDriverRoute>} />
-                <Route path="/driver/trips" element={<ProtectedDriverRoute><DriverTrips /></ProtectedDriverRoute>} />
-                <Route path="/driver/trip/:id" element={<ProtectedDriverRoute><DriverTripDetail /></ProtectedDriverRoute>} />
-                <Route path="/driver/passengers" element={<ProtectedDriverRoute><DriverPassengers /></ProtectedDriverRoute>} />
-                <Route path="/driver/profile" element={<ProtectedDriverRoute><DriverProfile /></ProtectedDriverRoute>} />
-                <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="drivers" element={<DriversManagement />} />
-                  <Route path="trips" element={<TripsManagement />} />
-                  <Route path="bookings" element={<BookingsManagement />} />
-                  <Route path="pickup-points" element={<PickupPointsManagement />} />
-                <Route path="reviews" element={<ReviewsManagement />} />
-                <Route path="users" element={<UsersManagement />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/search" element={<SearchResults />} />
+                  <Route path="/seats" element={<SeatSelection />} />
+                  <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/ticket" element={<ETicket />} />
+                  <Route path="/verify/:ticketId" element={<TicketVerification />} />
+                  <Route path="/tracking" element={<DriverTracking />} />
+                  <Route path="/track-ticket" element={<TrackTicket />} />
+                  <Route path="/dashboard" element={<UserDashboard />} />
+                  
+                  {/* Unified login */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/driver/login" element={<Login />} />
+                  <Route path="/admin/login" element={<Login />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  
+                  {/* Protected driver routes */}
+                  <Route path="/driver" element={<ProtectedDriverRoute><DriverHome /></ProtectedDriverRoute>} />
+                  <Route path="/driver/trip/active" element={<ProtectedDriverRoute><DriverTripActive /></ProtectedDriverRoute>} />
+                  <Route path="/driver/trips" element={<ProtectedDriverRoute><DriverTrips /></ProtectedDriverRoute>} />
+                  <Route path="/driver/trip/:id" element={<ProtectedDriverRoute><DriverTripDetail /></ProtectedDriverRoute>} />
+                  <Route path="/driver/passengers" element={<ProtectedDriverRoute><DriverPassengers /></ProtectedDriverRoute>} />
+                  <Route path="/driver/profile" element={<ProtectedDriverRoute><DriverProfile /></ProtectedDriverRoute>} />
+                  <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="drivers" element={<DriversManagement />} />
+                    <Route path="trips" element={<TripsManagement />} />
+                    <Route path="bookings" element={<BookingsManagement />} />
+                    <Route path="pickup-points" element={<PickupPointsManagement />} />
+                    <Route path="reviews" element={<ReviewsManagement />} />
+                    <Route path="users" element={<UsersManagement />} />
+                  </Route>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </BrowserRouter>
           </DriverProvider>
         </BookingProvider>
