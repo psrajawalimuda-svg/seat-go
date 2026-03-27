@@ -1,26 +1,47 @@
 
 
-# Restore RBAC Redirect for Driver & Admin
+# Review & Improve Driver Registration Flow
 
-## Problem
-After login, all users navigate to `/dashboard` (passenger page). Admins and drivers are not redirected to their respective dashboards (`/admin`, `/driver`). The role detection via `user_roles` table works correctly, but the login flow doesn't use it for routing.
+## Current Issues
+
+1. **Onboarding page unprotected** — `/driver/onboarding` has no auth guard; anyone can access it
+2. **Pending review screen is bare** — shows "Akun Dalam Review" but no data completeness status (KTP, SIM, photo checkmarks)
+3. **No post-verification redirect logic** — after clicking email verification link, user lands on `/` instead of being routed to onboarding
+4. **No "verified" status indicator** — after admin approves, driver just enters the app without a welcome/verified confirmation
 
 ## Changes
 
-### 1. Smart Redirect After Login (`src/pages/Login.tsx`)
-After successful `signInWithPassword`, call `get_user_login_info` RPC to determine role, then redirect accordingly:
-- `is_admin` → navigate to `/admin`
-- `is_driver` → navigate to `/driver`
-- Otherwise → navigate to `/dashboard`
+### 1. Protect Onboarding Route (`src/App.tsx`)
+Wrap `/driver/onboarding` with a lightweight auth check (must be logged in + have driver role). Redirect to `/login` if unauthenticated.
 
-This adds one RPC call but ensures correct routing. The call runs in parallel with AuthContext's own fetch, so there's minimal overhead.
+### 2. Handle Post-Email-Verification Redirect (`src/App.tsx` + `src/pages/Login.tsx`)
+- The `emailRedirectTo` is set to `window.location.origin` (lands on `/`)
+- Change it to `window.location.origin + "/driver"` so after verification the driver hits `ProtectedDriverRoute`, which auto-redirects to onboarding if data is incomplete
 
-### 2. Role-Based Redirect in UserDashboard (`src/pages/UserDashboard.tsx`)
-Add a guard at the top of `UserDashboard`: if `profile?.role === "admin"`, redirect to `/admin`. If `profile?.role === "driver"`, redirect to `/driver`. This handles cases where users navigate directly to `/dashboard`.
+### 3. Enhance Pending Review Screen (`src/components/driver/ProtectedDriverRoute.tsx`)
+Replace the simple "Akun Dalam Review" screen with a detailed status card showing:
+- Name & phone (from driver record)
+- KTP upload status (checkmark or missing)
+- SIM upload status (checkmark or missing)  
+- Photo upload status (checkmark or missing)
+- Overall status badge: "Menunggu Review Admin"
+- Button to go back to onboarding if any document is missing (edge case)
+- Logout button
+
+### 4. Add Welcome/Verified Screen on First Approved Login (`src/components/driver/ProtectedDriverRoute.tsx`)
+When driver is `approved` and it's their first time seeing it:
+- Show a brief "Akun Terverifikasi" welcome animation (auto-dismiss after 2 seconds or tap to continue)
+- Use `localStorage` flag `sg_driver_welcomed` to only show once
+- Then render children (driver dashboard)
+
+### 5. Protect Onboarding with Auth Guard (`src/pages/driver/DriverOnboarding.tsx`)
+Add auth check at top: if no user or not a driver role, redirect to `/login`.
 
 ## Files
-- `src/pages/Login.tsx` — add role check after login, route to correct dashboard
-- `src/pages/UserDashboard.tsx` — add role-based redirect guard
+- `src/App.tsx` — wrap onboarding route with auth guard
+- `src/pages/Login.tsx` — update `emailRedirectTo` to `/driver`
+- `src/components/driver/ProtectedDriverRoute.tsx` — enhanced pending screen with checklist + verified welcome
+- `src/pages/driver/DriverOnboarding.tsx` — add auth redirect if not logged in
 
 No database changes needed.
 
