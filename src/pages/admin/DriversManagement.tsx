@@ -531,12 +531,6 @@ export default function DriversManagement() {
         </DialogContent>
       </Dialog>
 
-      <style>{`
-        .driver-marker-icon { background: none; border: none; }
-        .leaflet-container { font-family: inherit; }
-        .driver-map-popup .leaflet-popup-content-wrapper { border-radius: 16px; padding: 0; overflow: hidden; }
-        .driver-map-popup .leaflet-popup-content { margin: 0; }
-      `}</style>
     </div>
   );
 }
