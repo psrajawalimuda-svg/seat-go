@@ -381,7 +381,7 @@ export default function DriversManagement() {
         </Card>
       ) : (
         <Suspense fallback={<div className="h-[700px] flex items-center justify-center"><Skeleton className="h-full w-full rounded-[2.5rem]" /></div>}>
-          <DriversMapView drivers={displayDrivers} allDrivers={drivers} />
+          <DriversMapView drivers={approvedDrivers} allDrivers={drivers} />
         </Suspense>
       )}
 
