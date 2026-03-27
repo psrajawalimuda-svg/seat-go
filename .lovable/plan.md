@@ -1,83 +1,50 @@
 
 
-# Performance & Speed Optimization Plan
+# Optimize Driver Login Speed
 
-## Issues Found
+## Problem
+Driver login makes **3 sequential network calls**:
+1. `signInWithPassword` → waits
+2. `get_user_login_info` RPC → waits
+3. Then `AuthContext.fetchProfile` fires again (triggered by `onAuthStateChange`) doing **another** `profiles` SELECT + `get_user_login_info` RPC — duplicating call #2
 
-### 1. No Code Splitting — All Pages Loaded Eagerly
-**Impact: HIGH** — Every page (Home, Admin Dashboard, DriversManagement with Leaflet+MarkerCluster, etc.) is bundled together and loaded on first visit, even if the user only visits the login page.
+For pending/rejected drivers, there's a **4th call**: `signOut()` after already logging in.
 
-**Fix**: Use `React.lazy()` + `Suspense` for all route components in `App.tsx`. Only `FleetMap` currently uses lazy loading.
+Total: ~4 round trips, each 200-500ms = 1-2 seconds of waiting.
 
-### 2. Admin Dashboard Fires 5 Parallel Queries on Mount
-**Impact: MEDIUM** — `AdminDashboard` calls `useDrivers()`, `useTrips()`, `useBookings()`, `usePickupPoints()`, `useReviews()` simultaneously. The `useReviews()` hook is the worst offender — it makes **3 sequential queries** (reviews → trips → drivers) in a single call.
+## Solution
 
-**Fix**: 
-- Add `staleTime` to all React Query hooks (e.g. 30s for drivers, 60s for pickup points) so navigating between admin pages doesn't re-fetch everything.
-- Refactor `useReviews()` to use a database JOIN or view instead of 3 separate fetches.
+### 1. Remove duplicate RPC in Login.tsx
+After `signInWithPassword`, skip the `get_user_login_info` call. Instead, navigate immediately and let `AuthContext.fetchProfile` handle role detection. The `ProtectedDriverRoute` already checks approval status and blocks unapproved drivers with a proper UI.
 
-### 3. No React Query `staleTime` Configuration
-**Impact: HIGH** — Default `staleTime` is `0`, meaning every component mount triggers a re-fetch. Navigating between pages causes redundant API calls.
+This removes 1 full RPC call (~300ms) and the conditional `signOut()` call for pending drivers.
 
-**Fix**: Configure `QueryClient` with sensible defaults:
-```text
-defaultOptions.queries.staleTime = 30_000  (30s)
-defaultOptions.queries.gcTime = 300_000     (5min)
-```
+### 2. Simplify Login handler
+- Login success → check cached profile or just navigate to `/dashboard`
+- `AuthContext` resolves role → triggers redirect via route guards
+- Pending/rejected blocking happens in `ProtectedDriverRoute` (already implemented)
 
-### 4. AuthContext Double-Fetches on Login
-**Impact: MEDIUM** — When a user logs in, `onAuthStateChange` fires `fetchProfile()`, which calls both `profiles` SELECT and `get_user_login_info` RPC. But the Login page *also* calls `get_user_login_info` RPC separately. That's 3 network requests where 1 would suffice.
+### 3. Optimize AuthContext.fetchProfile
+Run `profiles` SELECT and `get_user_login_info` RPC in `Promise.all` (already done — confirmed). But add early return from cache when navigating between pages.
 
-**Fix**: After login in `Login.tsx`, navigate immediately and let `AuthContext` handle the profile fetch. Remove the duplicate RPC call from login handler, or skip the AuthContext fetch when login already has the info.
+## Changes
 
-### 5. ProtectedAdminRoute Uses `useEffect` + `setState` Instead of React Query
-**Impact: LOW** — Admin role check uses a manual `useEffect` pattern, causing an extra render cycle and no caching.
+### `src/pages/Login.tsx`
+- Remove lines 68-106 (the `get_user_login_info` RPC call and all driver status checks)
+- After successful auth, navigate based on simple logic: just go to `/dashboard` and let route guards handle redirection
+- Remove `pendingMessage` state and the pending/rejected UI (moved to `ProtectedDriverRoute`)
+- Keep signup flow unchanged
 
-**Fix**: Use `useQuery` like `ProtectedDriverRoute` does, with caching.
+### `src/context/AuthContext.tsx`
+- Store role resolution result immediately after `fetchProfile` completes so navigation is instant on subsequent mounts
 
-### 6. Heavy Leaflet Imports on Non-Map Pages
-**Impact: MEDIUM** — `DriversManagement.tsx` imports Leaflet, MarkerCluster, and react-leaflet-cluster at the top level (line 24-29). These are large libraries loaded even when the user is just viewing the driver list tab.
+## Result
+- Login: 1 network call (`signInWithPassword`) → instant navigation
+- Role check happens in background via `AuthContext`
+- Route guards (`ProtectedDriverRoute`, `ProtectedAdminRoute`) handle access control
+- Expected improvement: ~50-70% faster login (from ~1.5s to ~500ms)
 
-**Fix**: Split the map view into a separate lazy-loaded component within `DriversManagement`.
-
-### 7. No Pagination on Data Queries
-**Impact: MEDIUM (scales poorly)** — `useBookings()`, `useDrivers()`, `useTrips()` all fetch entire tables. With hundreds/thousands of records this will get slow.
-
-**Fix**: Add `.limit(50)` to dashboard queries and implement pagination for admin management tables.
-
-## Implementation
-
-### Step 1 — Configure QueryClient Defaults (`src/App.tsx`)
-Set global `staleTime: 30_000` and `gcTime: 300_000` to prevent redundant re-fetches.
-
-### Step 2 — Lazy Load All Route Components (`src/App.tsx`)
-Wrap all page imports with `React.lazy()` and wrap `<Routes>` in `<Suspense>`. This dramatically reduces initial bundle size.
-
-### Step 3 — Optimize `useReviews()` Hook (`src/hooks/use-supabase-data.ts`)
-Remove the 3-query waterfall. Use Supabase foreign key joins: `reviews.select("*, trip:trips(*), driver:drivers(*)")` — single query instead of 3.
-
-### Step 4 — Remove Duplicate RPC in Login (`src/pages/Login.tsx`)
-After successful auth, use the `loginInfo` already fetched to set a temporary flag, and let AuthContext `fetchProfile` handle the rest without re-calling the RPC.
-
-### Step 5 — Fix ProtectedAdminRoute (`src/components/admin/ProtectedAdminRoute.tsx`)
-Replace `useEffect`+`useState` with `useQuery` for caching and consistency.
-
-### Step 6 — Lazy Load Map in DriversManagement (`src/pages/admin/DriversManagement.tsx`)
-Extract map section into a lazy-loaded sub-component to avoid loading Leaflet on every admin page.
-
-### Step 7 — Add Query Limits (`src/hooks/use-supabase-data.ts`)
-Add `.limit(100)` to bookings and reviews queries to prevent unbounded data fetching.
-
-## Files Modified
-- `src/App.tsx` — lazy imports, QueryClient defaults, Suspense wrapper
-- `src/hooks/use-supabase-data.ts` — staleTime per hook, reviews JOIN, query limits
-- `src/pages/Login.tsx` — remove duplicate RPC call
-- `src/components/admin/ProtectedAdminRoute.tsx` — use useQuery
-- `src/pages/admin/DriversManagement.tsx` — lazy load map section
-
-## Technical Details
-- No database changes needed
-- No new dependencies
-- All changes are backward-compatible
-- Expected improvement: ~40-60% reduction in initial load time, ~50% fewer API calls during navigation
+## Files
+- `src/pages/Login.tsx` — simplify login handler, remove RPC call
+- No other files need changes (route guards already handle blocking)
 
