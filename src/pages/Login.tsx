@@ -35,8 +35,6 @@ export default function Login() {
 
     setLoading(true);
     setError("");
-    setPendingMessage("");
-
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     
     if (authError) {
@@ -115,7 +113,7 @@ export default function Login() {
     }
 
     toast.success("Pendaftaran berhasil! Silakan cek email untuk verifikasi.");
-    setPendingMessage("Pendaftaran berhasil! Setelah verifikasi email, akun Anda akan direview oleh admin.");
+    toast.info("Setelah verifikasi email, akun Anda akan direview oleh admin.");
     setIsSignup(false);
     setLoading(false);
   };
@@ -228,7 +226,7 @@ export default function Login() {
           <div className="text-center">
             <button
               type="button"
-              onClick={() => { setIsSignup(!isSignup); setError(""); setPendingMessage(""); }}
+              onClick={() => { setIsSignup(!isSignup); setError(""); }}
               className="text-sm font-bold text-primary hover:underline"
             >
               {isSignup ? "Sudah punya akun? Login" : "Belum punya akun? Daftar sebagai Driver"}
