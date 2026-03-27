@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, memo } from "react";
+import { useState, useMemo, useEffect, useCallback, memo, lazy, Suspense } from "react";
 import { 
   Plus, Pencil, Phone, Star, Mail, FileText, 
   Search, Map as MapIcon, LayoutGrid, List,
@@ -21,39 +21,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import "leaflet.markercluster/dist/MarkerCluster.css";
-import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import MarkerClusterGroup from "react-leaflet-cluster";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [25, 41], iconAnchor: [12, 41] });
-L.Marker.prototype.options.icon = DefaultIcon;
-
-const createDriverIcon = (status: string, service_type: string = 'mobil', bearing: number = 0) => {
-  const color = status === 'online' ? '#22c55e' : status === 'on_trip' ? '#3b82f6' : status === 'busy' ? '#eab308' : '#94a3b8';
-  
-  const iconSvg = service_type === 'motor' 
-    ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 17.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5zM18.5 17.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5zM15 6.5l-4 4.5h-3.5l-1-2h-3v2h2l1 2h1v1.5h8.5l.5-1.5h4v-1l-2.5-3.5h-3z"/></svg>`
-    : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L19 21l-7-4-7 4z"/></svg>`;
-
-  return L.divIcon({
-    className: 'driver-marker-icon',
-    html: `<div style="transform: rotate(${bearing}deg); transition: all 0.5s ease;">
-      <div style="width: 40px; height: 40px; border-radius: 50%; background: white; border: 3px solid ${color}; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-        ${iconSvg}
-      </div>
-    </div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-  });
-};
+// Lazy load map component to avoid loading Leaflet on table view
+const DriversMapView = lazy(() => import("@/components/admin/DriversMapView"));
 
 interface DriverForm {
   id?: string;
@@ -78,61 +50,6 @@ const initialForm: DriverForm = {
   assigned_vehicle: "" 
 };
 
-function ChangeView({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => { map.setView(center); }, [center, map]);
-  return null;
-}
-
-// Memoized Marker component for performance
-const DriverMarker = memo(({ driver, isSelected, onClick }: { driver: DbDriver, isSelected: boolean, onClick: (id: string) => void }) => {
-  if (!driver.latitude || !driver.longitude) return null;
-  
-  return (
-    <Marker 
-      position={[driver.latitude, driver.longitude]} 
-      icon={createDriverIcon(driver.status, driver.service_type, driver.bearing)} 
-      eventHandlers={{ click: () => onClick(driver.id) }}
-    >
-      <Popup className="driver-map-popup">
-        <div className="p-4 min-w-[200px] space-y-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 border-2">
-              {driver.photo_url && <AvatarImage src={driver.photo_url} />}
-              <AvatarFallback className="font-black uppercase">{driver.name[0]}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-black uppercase text-xs text-primary leading-none mb-1">{driver.name}</p>
-              <p className="text-[9px] font-black uppercase opacity-50">{driver.plate}</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-muted p-2 rounded-lg">
-              <p className="text-[8px] font-black uppercase opacity-50 mb-0.5">Rating</p>
-              <p className="text-xs font-black">⭐ {driver.rating.toFixed(1)}</p>
-            </div>
-            <div className="bg-muted p-2 rounded-lg">
-              <p className="text-[8px] font-black uppercase opacity-50 mb-0.5">Layanan</p>
-              <p className="text-xs font-black uppercase">{driver.service_type || 'mobil'}</p>
-            </div>
-          </div>
-
-          <Badge className={cn(
-            "w-full justify-center text-[8px] font-black uppercase px-1.5 py-1", 
-            driver.status === 'online' ? "bg-green-500" : 
-            driver.status === 'on_trip' ? "bg-blue-500" :
-            driver.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
-          )}>
-            {driver.status === 'on_trip' ? "SEDANG BERTUGAS" : driver.status}
-          </Badge>
-        </div>
-      </Popup>
-    </Marker>
-  );
-});
-
-DriverMarker.displayName = "DriverMarker";
 
 export default function DriversManagement() {
   const { data: drivers = [], isLoading, upsert } = useDrivers();
@@ -149,11 +66,7 @@ export default function DriversManagement() {
   const [rejectReason, setRejectReason] = useState("");
   const [form, setForm] = useState<DriverForm>(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
 
-  const handleMarkerClick = useCallback((id: string) => {
-    setSelectedDriverId(id);
-  }, []);
 
   useEffect(() => {
     // Subscribe to all changes in drivers table for real-time tracking
@@ -467,66 +380,9 @@ export default function DriversManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-[700px]">
-          <Card className="xl:col-span-3 rounded-[2.5rem] overflow-hidden border-2 shadow-xl relative z-0">
-            <MapContainer center={[-6.2088, 106.8456]} zoom={12} className="h-full w-full">
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <MarkerClusterGroup
-                chunkedLoading
-                maxClusterRadius={50}
-                showCoverageOnHover={false}
-                disableClusteringAtZoom={16}
-              >
-                {displayDrivers.map(d => (
-                  <DriverMarker 
-                    key={d.id} 
-                    driver={d} 
-                    isSelected={selectedDriverId === d.id} 
-                    onClick={handleMarkerClick} 
-                  />
-                ))}
-              </MarkerClusterGroup>
-              {selectedDriverId && <ChangeView center={[drivers.find(d => d.id === selectedDriverId)?.latitude || -6.2088, drivers.find(d => d.id === selectedDriverId)?.longitude || 106.8456]} />}
-            </MapContainer>
-            <div className="absolute top-4 right-4 z-10 bg-background/90 backdrop-blur p-2 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Live Fleet Tracking
-            </div>
-          </Card>
-          <Card className="rounded-[2.5rem] border-2 shadow-xl overflow-hidden flex flex-col h-full">
-            <CardHeader className="p-6 border-b">
-              <CardTitle className="text-lg font-black uppercase tracking-tight italic">Fleet List</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 overflow-y-auto flex-1">
-              <div className="divide-y">
-                {displayDrivers.map(d => (
-                  <div key={d.id} className={cn("p-4 hover:bg-muted/30 transition-colors cursor-pointer group", selectedDriverId === d.id && "bg-primary/5 border-l-4 border-primary")}
-                    onClick={() => { setSelectedDriverId(d.id); if (d.latitude != null && d.longitude != null) setViewMode("map"); }}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-2 h-2 rounded-full", 
-                          d.status === 'online' ? "bg-green-500" : 
-                          d.status === 'on_trip' ? "bg-blue-500" :
-                          d.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
-                        )} />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-black uppercase tracking-tight text-sm leading-none">{d.name}</p>
-                            {(d.latitude == null || d.longitude == null) && (
-                              <Badge variant="outline" className="text-[7px] px-1 py-0 border-destructive text-destructive font-black">GPS OFF</Badge>
-                            )}
-                          </div>
-                          <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">{d.plate}</p>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-30 transition-opacity" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Suspense fallback={<div className="h-[700px] flex items-center justify-center"><Skeleton className="h-full w-full rounded-[2.5rem]" /></div>}>
+          <DriversMapView drivers={displayDrivers} allDrivers={drivers} />
+        </Suspense>
       )}
 
       {/* Add/Edit Dialog */}
@@ -675,12 +531,6 @@ export default function DriversManagement() {
         </DialogContent>
       </Dialog>
 
-      <style>{`
-        .driver-marker-icon { background: none; border: none; }
-        .leaflet-container { font-family: inherit; }
-        .driver-map-popup .leaflet-popup-content-wrapper { border-radius: 16px; padding: 0; overflow: hidden; }
-        .driver-map-popup .leaflet-popup-content { margin: 0; }
-      `}</style>
     </div>
   );
 }

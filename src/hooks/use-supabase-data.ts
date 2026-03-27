@@ -229,7 +229,7 @@ export function useBookings() {
   const query = useQuery({
     queryKey: ["bookings"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("bookings").select("*").order("booked_at", { ascending: false });
+      const { data, error } = await supabase.from("bookings").select("*").order("booked_at", { ascending: false }).limit(200);
       if (error) throw error;
       return data as DbBooking[];
     },
@@ -262,16 +262,14 @@ export function useReviews() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reviews")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("*, trip:trips(*), driver:drivers(*)")
+        .order("created_at", { ascending: false })
+        .limit(100);
       if (error) throw error;
-      // Fetch trips and drivers for joining
-      const { data: trips } = await supabase.from("trips").select("*");
-      const { data: drivers } = await supabase.from("drivers").select("*");
       return (data as any[]).map((r) => ({
         ...r,
-        trip: (trips || []).find((t: any) => t.id === r.trip_id) || null,
-        driver: (drivers || []).find((d: any) => d.id === r.driver_id) || null,
+        trip: r.trip || null,
+        driver: r.driver || null,
       })) as (DbReview & { trip: DbTrip; driver: DbDriver })[];
     },
   });
