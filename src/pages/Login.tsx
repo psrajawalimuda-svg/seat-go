@@ -62,9 +62,10 @@ export default function Login() {
     toast.success("Login berhasil!");
     try {
       const { data: loginInfo } = await supabase.rpc("get_user_login_info", { _user_id: (await supabase.auth.getUser()).data.user?.id ?? "" });
-      if (loginInfo?.is_admin) {
+      const info = loginInfo as any;
+      if (info?.is_admin) {
         navigate("/admin");
-      } else if (loginInfo?.is_driver) {
+      } else if (info?.is_driver) {
         navigate("/driver");
       } else {
         navigate("/dashboard");
