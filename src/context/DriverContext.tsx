@@ -189,11 +189,14 @@ export function DriverProvider({ children }: { children: ReactNode }) {
         if (!simInterval) {
           let lat = -6.2000;
           let lng = 106.8166;
+          // Immediate first update so driver appears on map right away
+          lastUpdateRef.current = 0;
+          updateDB(lat, lng, Math.random() * 360);
           simInterval = setInterval(() => {
             lat += (Math.random() - 0.5) * 0.0005;
             lng += (Math.random() - 0.5) * 0.0005;
             updateDB(lat, lng, Math.random() * 360);
-          }, THROTTLE_MS * 3); // Slower simulation to save resources
+          }, THROTTLE_MS * 3);
         }
       },
       { 

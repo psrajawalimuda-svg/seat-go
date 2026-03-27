@@ -1,4 +1,4 @@
-import { memo, useEffect, useCallback, useState } from "react";
+import { memo, useEffect, useCallback, useState, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -8,7 +8,7 @@ import MarkerClusterGroup from "react-leaflet-cluster";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DbDriver } from "@/hooks/use-supabase-data";
 
@@ -34,6 +34,20 @@ const createDriverIcon = (status: string, service_type: string = 'mobil', bearin
 function ChangeView({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => { map.setView(center); }, [center, map]);
+  return null;
+}
+
+function AutoFitBounds({ drivers }: { drivers: DbDriver[] }) {
+  const map = useMap();
+  const fitted = useRef(false);
+  useEffect(() => {
+    if (fitted.current) return;
+    const withCoords = drivers.filter(d => d.latitude != null && d.longitude != null);
+    if (withCoords.length === 0) return;
+    const bounds = L.latLngBounds(withCoords.map(d => [d.latitude!, d.longitude!]));
+    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    fitted.current = true;
+  }, [drivers, map]);
   return null;
 }
 
@@ -88,13 +102,21 @@ export default function DriversMapView({ drivers, allDrivers }: DriversMapViewPr
         <Card className="xl:col-span-3 rounded-[2.5rem] overflow-hidden border-2 shadow-xl relative z-0">
           <MapContainer center={[-6.2088, 106.8456]} zoom={12} className="h-full w-full">
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <AutoFitBounds drivers={drivers} />
             <MarkerClusterGroup chunkedLoading maxClusterRadius={50} showCoverageOnHover={false} disableClusteringAtZoom={16}>
               {drivers.map(d => <DriverMarker key={d.id} driver={d} onClick={handleMarkerClick} />)}
             </MarkerClusterGroup>
             {selectedDriverId && <ChangeView center={[allDrivers.find(d => d.id === selectedDriverId)?.latitude || -6.2088, allDrivers.find(d => d.id === selectedDriverId)?.longitude || 106.8456]} />}
           </MapContainer>
-          <div className="absolute top-4 right-4 z-10 bg-background/90 backdrop-blur p-2 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Live Fleet Tracking
+          <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+            <div className="bg-background/90 backdrop-blur p-2 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Live Fleet Tracking
+            </div>
+            {drivers.filter(d => d.latitude == null || d.longitude == null).length > 0 && (
+              <div className="bg-background/90 backdrop-blur p-2 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-destructive">
+                <AlertCircle className="h-3 w-3" /> {drivers.filter(d => d.latitude == null || d.longitude == null).length} driver tanpa GPS
+              </div>
+            )}
           </div>
         </Card>
         <Card className="rounded-[2.5rem] border-2 shadow-xl overflow-hidden flex flex-col h-full">
