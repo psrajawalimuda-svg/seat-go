@@ -12,7 +12,7 @@ describe("use-supabase-data mapping functions", () => {
       rating: 4.8,
       total_trips: 150,
       created_at: "2026-01-01T00:00:00Z",
-      service_type: "shuttle",
+      service_type: null,
       approval_status: "approved",
     };
 
