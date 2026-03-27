@@ -117,6 +117,7 @@ export function toTrip(t: DbTrip) {
     departureDate: t.departure_date,
     estimatedCompletion: t.estimated_completion,
     actualCompletion: t.actual_completion,
+    createdAt: t.created_at,
   };
 }
 

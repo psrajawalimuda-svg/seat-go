@@ -19,6 +19,10 @@ export interface Trip {
   driverPhone: string;
   vehiclePlate: string;
   vehicleType?: string;
+  departureDate?: string | null;
+  estimatedCompletion?: string | null;
+  actualCompletion?: string | null;
+  createdAt?: string;
 }
 
 export interface Booking {
