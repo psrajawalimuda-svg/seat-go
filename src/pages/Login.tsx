@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bus, LogIn, UserPlus, AlertCircle, Clock, XCircle, Loader2 } from "lucide-react";
+import { Bus, LogIn, UserPlus, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -14,7 +14,7 @@ export default function Login() {
   const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [pendingMessage, setPendingMessage] = useState("");
+  
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,22 +35,16 @@ export default function Login() {
 
     setLoading(true);
     setError("");
-    setPendingMessage("");
-
-    const startTime = Date.now();
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     
     if (authError) {
-      // Security Hardening: Generic error message to prevent enumeration
       const genericError = "Email atau password yang Anda masukkan salah.";
       setError(genericError);
       
-      // Update attempts for lockout logic
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
       
       if (newAttempts >= 5) {
-        // Lock for 1 minute after 5 failed attempts
         setLockoutUntil(Date.now() + 60000);
         setLoginAttempts(0);
         toast.error("Terlalu banyak percobaan gagal. Akun dikunci sementara (60 detik).");
@@ -64,48 +58,7 @@ export default function Login() {
     setLoginAttempts(0);
     setLockoutUntil(null);
 
-    // Single RTT to get all role and status info
-    const { data: loginInfo, error: rpcError } = await supabase.rpc("get_user_login_info", { 
-      _user_id: authData.user.id 
-    });
-
-    if (rpcError) {
-      console.error("Login info error:", rpcError);
-      setError("Terjadi kesalahan saat mengambil informasi profil.");
-      setLoading(false);
-      return;
-    }
-
-    const { is_admin, is_driver, driver_status, rejection_reason } = loginInfo as any;
-    const duration = Date.now() - startTime;
-    console.log(`[Performance] Login completed in ${duration}ms`);
-
-    if (is_admin) {
-      toast.success("Login admin berhasil!");
-      navigate("/admin");
-      return;
-    }
-
-    if (is_driver) {
-      if (driver_status === "pending") {
-        await supabase.auth.signOut();
-        setPendingMessage("Akun Anda sedang dalam proses review oleh admin. Silakan lengkapi profil dan tunggu persetujuan.");
-        setLoading(false);
-        return;
-      }
-      if (driver_status === "rejected") {
-        await supabase.auth.signOut();
-        setPendingMessage(`Pendaftaran ditolak: ${rejection_reason || "Tidak memenuhi persyaratan"}`);
-        setLoading(false);
-        return;
-      }
-
-      toast.success("Login driver berhasil!");
-      navigate("/driver");
-      return;
-    }
-
-    // Default to passenger
+    // Navigate immediately — AuthContext + route guards handle role detection
     toast.success("Login berhasil!");
     navigate("/dashboard");
   };
@@ -114,8 +67,6 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setPendingMessage("");
-
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -162,7 +113,7 @@ export default function Login() {
     }
 
     toast.success("Pendaftaran berhasil! Silakan cek email untuk verifikasi.");
-    setPendingMessage("Pendaftaran berhasil! Setelah verifikasi email, akun Anda akan direview oleh admin.");
+    toast.info("Setelah verifikasi email, akun Anda akan direview oleh admin.");
     setIsSignup(false);
     setLoading(false);
   };
@@ -190,12 +141,6 @@ export default function Login() {
             </div>
           )}
 
-          {pendingMessage && (
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-500/10 text-yellow-700 text-sm font-bold border border-yellow-500/20">
-              {pendingMessage.includes("ditolak") ? <XCircle size={20} className="text-destructive mt-0.5 shrink-0" /> : <Clock size={20} className="mt-0.5 shrink-0" />}
-              <span>{pendingMessage}</span>
-            </div>
-          )}
 
           <form onSubmit={isSignup ? handleSignup : handleLogin} className="space-y-4">
             {isSignup && (
@@ -281,7 +226,7 @@ export default function Login() {
           <div className="text-center">
             <button
               type="button"
-              onClick={() => { setIsSignup(!isSignup); setError(""); setPendingMessage(""); }}
+              onClick={() => { setIsSignup(!isSignup); setError(""); }}
               className="text-sm font-bold text-primary hover:underline"
             >
               {isSignup ? "Sudah punya akun? Login" : "Belum punya akun? Daftar sebagai Driver"}
