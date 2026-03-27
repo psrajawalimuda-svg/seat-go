@@ -12,6 +12,7 @@ import SearchResults from "./pages/SearchResults";
 import SeatSelection from "./pages/SeatSelection";
 import Checkout from "./pages/Checkout";
 import ETicket from "./pages/ETicket";
+import TicketVerification from "./pages/TicketVerification";
 import DriverTracking from "./pages/DriverTracking";
 import TrackTicket from "./pages/TrackTicket";
 import UserDashboard from "./pages/UserDashboard";
@@ -53,6 +54,7 @@ const App = () => (
                 <Route path="/seats" element={<SeatSelection />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/ticket" element={<ETicket />} />
+                <Route path="/verify/:ticketId" element={<TicketVerification />} />
                 <Route path="/tracking" element={<DriverTracking />} />
                 <Route path="/track-ticket" element={<TrackTicket />} />
                 <Route path="/dashboard" element={<UserDashboard />} />

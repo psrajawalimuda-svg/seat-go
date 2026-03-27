@@ -124,7 +124,7 @@ export const TicketPrint = forwardRef<HTMLDivElement, TicketPrintProps>(({ ticke
               <div className="text-center space-y-4">
                 <div className="bg-white p-3 border-2 border-zinc-100 rounded-2xl shadow-sm inline-block">
                   <QRCodeSVG 
-                    value={`https://seat-go.com/verify/${ticket.id}`}
+                    value={`${window.location.origin}/verify/${ticket.id}`}
                     size={120}
                     level="H"
                     includeMargin={false}

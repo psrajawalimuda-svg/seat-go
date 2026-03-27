@@ -23,6 +23,8 @@ export interface DbDriver {
   photo_url?: string;
   rejection_reason?: string;
   assigned_vehicle?: string;
+  email?: string;
+  license_number?: string;
   created_at: string;
 }
 

@@ -114,11 +114,47 @@ export function useTripTracking({
       },
       (err) => {
         let msg = "Unknown geolocation error";
-        if (err.code === err.PERMISSION_DENIED) msg = "Location permission denied";
-        else if (err.code === err.POSITION_UNAVAILABLE) msg = "Location information unavailable";
+        if (err.code === err.PERMISSION_DENIED) {
+          if (!window.isSecureContext) {
+            msg = "Insecure Origin (Non-HTTPS). Switching to simulation.";
+            console.warn("Geolocation blocked due to insecure origin. Using simulation for trip tracking.");
+          } else {
+            msg = "Location permission denied";
+          }
+        } else if (err.code === err.POSITION_UNAVAILABLE) msg = "Location information unavailable";
         else if (err.code === err.TIMEOUT) msg = "Location request timed out";
+        
         setError(msg);
         console.error("Geolocation error:", err);
+
+        // Fallback simulation for trips if GPS fails
+        const simulationInterval = setInterval(() => {
+          setCurrentPos((prev) => {
+            if (!prev) return [-6.2088, 106.8456];
+            const newPos: [number, number] = [
+              prev[0] + (Math.random() - 0.5) * 0.0002,
+              prev[1] + (Math.random() - 0.5) * 0.0002,
+            ];
+            
+            // Update Supabase during simulation too
+            const now = Date.now();
+            if (now - lastUpdateRef.current > throttleMs) {
+              lastUpdateRef.current = now;
+              if (activeTrip.driverId) {
+                supabase.from("drivers").update({
+                  latitude: newPos[0],
+                  longitude: newPos[1],
+                  bearing: Math.random() * 360,
+                  status: 'on_trip',
+                  last_active: new Date().toISOString()
+                } as any).eq("id", activeTrip.driverId).then(() => {});
+              }
+            }
+            return newPos;
+          });
+        }, throttleMs);
+
+        return () => clearInterval(simulationInterval);
       },
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
     );

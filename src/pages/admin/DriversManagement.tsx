@@ -63,10 +63,20 @@ interface DriverForm {
   license_number: string;
   plate: string;
   status: string;
+  service_type: "motor" | "mobil";
   assigned_vehicle: string;
 }
 
-const initialForm: DriverForm = { name: "", phone: "", email: "", license_number: "", plate: "", status: "offline", assigned_vehicle: "" };
+const initialForm: DriverForm = { 
+  name: "", 
+  phone: "", 
+  email: "", 
+  license_number: "", 
+  plate: "", 
+  status: "offline", 
+  service_type: "mobil",
+  assigned_vehicle: "" 
+};
 
 function ChangeView({ center }: { center: [number, number] }) {
   const map = useMap();
@@ -158,6 +168,7 @@ export default function DriversManagement() {
     setForm({
       id: d.id, name: d.name, phone: d.phone, email: d.email || "",
       license_number: d.license_number || "", plate: d.plate, status: d.status,
+      service_type: d.service_type || "mobil",
       assigned_vehicle: (d as any).assigned_vehicle || ""
     });
     setDialogOpen(true);
@@ -474,7 +485,12 @@ export default function DriversManagement() {
                           d.status === 'busy' ? "bg-yellow-500" : "bg-zinc-400"
                         )} />
                         <div>
-                          <p className="font-black uppercase tracking-tight text-sm leading-none mb-1">{d.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-black uppercase tracking-tight text-sm leading-none">{d.name}</p>
+                            {(d.latitude == null || d.longitude == null) && (
+                              <Badge variant="outline" className="text-[7px] px-1 py-0 border-destructive text-destructive font-black">GPS OFF</Badge>
+                            )}
+                          </div>
                           <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">{d.plate}</p>
                         </div>
                       </div>
@@ -511,14 +527,26 @@ export default function DriversManagement() {
                 <Input value={form.plate} onChange={e => setForm(f => ({ ...f, plate: e.target.value.toUpperCase() }))} className="font-mono font-bold" />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest">Email</Label>
-              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="font-bold" />
-            </div>
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest">Email</Label>
+                <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="font-bold" />
+              </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest">No. SIM</Label>
                 <Input value={form.license_number} onChange={e => setForm(f => ({ ...f, license_number: e.target.value }))} className="font-bold" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest">Jenis Layanan</Label>
+                <Select value={form.service_type} onValueChange={v => setForm(f => ({ ...f, service_type: v as "motor" | "mobil" }))}>
+                  <SelectTrigger className="font-black uppercase text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mobil">Mobil (Shuttle)</SelectItem>
+                    <SelectItem value="motor">Motor (Ojek)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest">Status</Label>

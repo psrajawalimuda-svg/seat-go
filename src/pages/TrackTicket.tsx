@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import { 
   Search, 
   QrCode, 
@@ -8,7 +9,8 @@ import {
   ArrowRight, 
   AlertCircle,
   ChevronLeft,
-  Scan
+  Scan,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,11 +21,20 @@ import { toast } from "sonner";
 
 export default function TrackTicket() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [ticketId, setTicketId] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const { data: allBookings = [] } = useBookings();
   const { data: allTrips = [] } = useTrips();
   const { setBooking } = useBooking();
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+
+  // Auto-fill from state if coming from verification page
+  useEffect(() => {
+    if (location.state?.ticketId) {
+      setTicketId(location.state.ticketId);
+    }
+  }, [location.state]);
 
   const handleSearch = () => {
     if (!ticketId.trim()) {
@@ -31,16 +42,12 @@ export default function TrackTicket() {
       return;
     }
 
-    // Generate reference code from booking for matching
-    const genRef = (id: string) => {
-      const hash = id.replace(/-/g, '').slice(0, 4).toUpperCase();
-      return `SG-${hash}`;
-    };
-
-    const query = ticketId.trim().toUpperCase();
+    const query = ticketId.trim().toLowerCase();
+    
+    // Find booking by ID or by Reference
     const booking = allBookings.find(b => 
-      b.id.toLowerCase().includes(ticketId.toLowerCase()) || 
-      genRef(b.id) === query
+      b.id.toLowerCase() === query || 
+      b.id.toLowerCase().includes(query)
     );
 
     if (booking) {
@@ -68,17 +75,51 @@ export default function TrackTicket() {
     }
   };
 
+  useEffect(() => {
+    if (isScanning && !scannerRef.current) {
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader-user",
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        /* verbose= */ false
+      );
+
+      scanner.render(
+        (decodedText) => {
+          // Extract ticket ID from URL if scanned from a verification link
+          // e.g., https://seat-go.com/verify/UUID
+          let id = decodedText;
+          if (decodedText.includes("/verify/")) {
+            id = decodedText.split("/verify/").pop() || decodedText;
+          }
+          
+          setTicketId(id);
+          setIsScanning(false);
+          toast.success("Tiket Terdeteksi!");
+          
+          // Auto-trigger search
+          setTimeout(() => {
+            const btn = document.getElementById("search-btn");
+            btn?.click();
+          }, 500);
+        },
+        (error) => {
+          // ignore scan errors
+        }
+      );
+
+      scannerRef.current = scanner;
+    }
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(err => console.error("Failed to clear scanner", err));
+        scannerRef.current = null;
+      }
+    };
+  }, [isScanning]);
+
   const toggleScan = () => {
     setIsScanning(!isScanning);
-    if (!isScanning) {
-      toast.info("Membuka Kamera...", { description: "Simulasi: Arahkan ke QR Code Tiket" });
-      // Simulasi scan berhasil setelah 2 detik
-      setTimeout(() => {
-        setTicketId("SG-DEMO-2026");
-        setIsScanning(false);
-        toast.success("Barcode Terdeteksi!");
-      }, 2000);
-    }
   };
 
   return (
@@ -97,6 +138,29 @@ export default function TrackTicket() {
         </div>
 
         <div className="space-y-4">
+          <AnimatePresence>
+            {isScanning && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="relative">
+                  <div id="qr-reader-user" className="rounded-[2rem] border-4 border-primary/20 bg-muted/50 overflow-hidden" />
+                  <Button 
+                    variant="destructive" 
+                    size="icon" 
+                    className="absolute top-4 right-4 rounded-full z-10 shadow-lg"
+                    onClick={() => setIsScanning(false)}
+                  >
+                    <X size={20} />
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="relative group">
             <Ticket className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input 
@@ -109,16 +173,17 @@ export default function TrackTicket() {
           </div>
 
           <Button 
+            id="search-btn"
             onClick={handleSearch}
-            className="w-full h-14 rounded-2xl shuttle-gradient text-white font-bold text-lg shadow-lg active:scale-95 transition-all"
+            className="w-full h-14 rounded-2xl shuttle-gradient font-black text-lg shadow-xl shadow-primary/20 gap-2"
           >
             Lacak Sekarang
-            <ArrowRight className="w-5 h-5 ml-2" />
+            <ArrowRight size={20} />
           </Button>
 
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-4 text-muted-foreground font-bold tracking-widest">Atau</span></div>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-dashed" /></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-4 font-black opacity-30">Atau</span></div>
           </div>
 
           <Button 
@@ -130,12 +195,12 @@ export default function TrackTicket() {
             {isScanning ? (
               <span className="flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                Memindai...
+                Kamera Aktif...
               </span>
             ) : (
               <>
                 <Scan className="w-5 h-5 mr-2" />
-                Scan Barcode Tiket
+                Scan QR Code Tiket
               </>
             )}
           </Button>

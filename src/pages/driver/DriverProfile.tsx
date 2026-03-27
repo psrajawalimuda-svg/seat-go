@@ -1,11 +1,12 @@
 import { useMemo, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Star, Route, DollarSign, Bell, Globe, LogOut, Pencil, Save, X, Upload, FileText, Camera, CheckCircle2 } from "lucide-react";
+import { Star, Route, DollarSign, Bell, Globe, LogOut, Pencil, Save, X, Upload, FileText, Camera, CheckCircle2, Bike, Car } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DriverBottomNav } from "@/components/driver/DriverBottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useDrivers } from "@/hooks/use-supabase-data";
@@ -35,13 +36,19 @@ export default function DriverProfile() {
   const [formData, setForm] = useState({
     name: DRIVER?.name || "",
     phone: DRIVER?.phone || "",
-    plate: DRIVER?.plate || ""
+    plate: DRIVER?.plate || "",
+    service_type: (DRIVER as any)?.service_type || "mobil"
   });
 
   // Sync form when DRIVER loads
   useMemo(() => {
     if (DRIVER) {
-      setForm({ name: DRIVER.name, phone: DRIVER.phone, plate: DRIVER.plate });
+      setForm({ 
+        name: DRIVER.name, 
+        phone: DRIVER.phone, 
+        plate: DRIVER.plate,
+        service_type: (DRIVER as any).service_type || "mobil"
+      });
     }
   }, [DRIVER?.id]);
 
@@ -54,7 +61,8 @@ export default function DriverProfile() {
         .update({ 
           name: formData.name, 
           phone: formData.phone, 
-          plate: formData.plate 
+          plate: formData.plate,
+          service_type: formData.service_type
         } as any)
         .eq("id", DRIVER.id);
 
@@ -198,16 +206,35 @@ export default function DriverProfile() {
                   <Input value={formData.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="h-11 rounded-xl font-bold border-2 focus:border-primary" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 px-1">Plat Nomor</Label>
-                  <Input value={formData.plate} onChange={e => setForm(f => ({ ...f, plate: e.target.value.toUpperCase() }))} className="h-11 rounded-xl font-black border-2 focus:border-primary" />
+                  <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 px-1">Jenis Layanan</Label>
+                  <Select value={formData.service_type} onValueChange={v => setForm(f => ({ ...f, service_type: v }))}>
+                    <SelectTrigger className="h-11 rounded-xl font-bold border-2 focus:border-primary">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mobil">Mobil</SelectItem>
+                      <SelectItem value="motor">Motor</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase tracking-widest opacity-50 px-1">Plat Nomor</Label>
+                <Input value={formData.plate} onChange={e => setForm(f => ({ ...f, plate: e.target.value.toUpperCase() }))} className="h-11 rounded-xl font-black border-2 focus:border-primary" />
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-dashed">
+            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-dashed">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Status Kendaraan</p>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Kendaraan</p>
                 <Badge variant="outline" className="bg-zinc-900 text-white border-0 font-black px-3 py-1">{(DRIVER as any).assigned_vehicle || formData.plate || "-"}</Badge>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Layanan</p>
+                <div className="flex items-center gap-1 font-bold text-sm uppercase">
+                  {formData.service_type === "motor" ? <Bike size={14} className="text-primary" /> : <Car size={14} className="text-primary" />}
+                  {formData.service_type}
+                </div>
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Telepon</p>

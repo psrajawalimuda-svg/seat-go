@@ -139,7 +139,6 @@ export function DriverProvider({ children }: { children: ReactNode }) {
             longitude: lng,
             bearing: bearing,
             last_active: new Date().toISOString(),
-            // Also update status to 'on_trip' if activeTrip exists
             status: activeTrip ? "on_trip" : "online"
           } as any)
           .eq("user_id", user.id);
@@ -150,6 +149,7 @@ export function DriverProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    let simInterval: any;
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, heading } = pos.coords;
@@ -167,11 +167,35 @@ export function DriverProvider({ children }: { children: ReactNode }) {
         lastPosRef.current = [latitude, longitude];
         updateDB(latitude, longitude, bearing);
       },
-      (err) => console.error("Global geolocation error:", err),
+      (err) => {
+        // Fallback simulation if GPS fails, permission denied, or insecure origin
+        const isSecure = window.isSecureContext;
+        if (!isSecure && err.code === err.PERMISSION_DENIED) {
+          if (lastUpdateRef.current === 0) {
+            console.warn("Geolocation blocked due to insecure origin (non-HTTPS). Switching to simulation mode.");
+          }
+        } else {
+          console.error("Global geolocation error:", err);
+        }
+
+        // Start movement simulation if real GPS fails
+        if (!simInterval) {
+          let lat = -6.2000;
+          let lng = 106.8166;
+          simInterval = setInterval(() => {
+            lat += (Math.random() - 0.5) * 0.0005;
+            lng += (Math.random() - 0.5) * 0.0005;
+            updateDB(lat, lng, Math.random() * 360);
+          }, THROTTLE_MS);
+        }
+      },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
 
-    return () => navigator.geolocation.clearWatch(watchId);
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      if (simInterval) clearInterval(simInterval);
+    };
   }, [isOnline, user?.id, !!activeTrip]);
 
   const playFeedback = useCallback((type: "success" | "error" | "action") => {

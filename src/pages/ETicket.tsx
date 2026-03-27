@@ -38,12 +38,7 @@ export default function ETicket() {
   const pickupTime = getPickupTime(trip.departureTime, booking.pickupPoint);
   const bookingRef = generateRef(booking.tripId, booking.seatNumber);
 
-  const qrPayload = JSON.stringify({
-    ref: bookingRef,
-    t: booking.tripId,
-    s: booking.seatNumber,
-    d: booking.date,
-  });
+  const qrPayload = `${window.location.origin}/verify/${booking.id}`;
 
   const ticketText = [
     `ShuttleGo E-Ticket`,
