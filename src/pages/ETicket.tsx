@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, MapPin, Armchair, Clock, Bus, Share2, Calendar, Route, User, Phone, MessageCircle, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -19,7 +20,7 @@ function generateRef(tripId: string, seat: number): string {
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
   }
-  return `SG-${Math.abs(hash).toString(36).toUpperCase().slice(0, 4).padEnd(4, "0")}`;
+  return `PYU-${Math.abs(hash).toString(36).toUpperCase().slice(0, 4).padEnd(4, "0")}`;
 }
 
 export default function ETicket() {
@@ -30,15 +31,22 @@ export default function ETicket() {
   const dbTrip = dbTrips?.find((t) => t.id === booking?.tripId);
   const trip = dbTrip ? toTrip(dbTrip) : null;
 
-  if (!booking || (!isLoading && !trip)) { navigate("/"); return null; }
-  if (isLoading || !trip) {
+  useEffect(() => {
+    if (!isLoading && (!booking || !trip)) {
+      navigate("/");
+    }
+  }, [booking, trip, isLoading, navigate]);
+
+  if (isLoading || !trip || !booking) {
     return <div className="mobile-container min-h-screen bg-background"><ScreenHeader title="E-Ticket" /><div className="px-4 py-6"><SkeletonCard /></div></div>;
   }
 
   const pickupTime = getPickupTime(trip.departureTime, booking.pickupPoint);
-  const bookingRef = generateRef(booking.tripId, booking.seatNumber);
+  const bookingRef = booking.ticketNumber || generateRef(booking.tripId, booking.seatNumber);
 
-  const qrPayload = `${window.location.origin}/verify/${booking.id}`;
+  const qrPayload = booking.ticketNumber 
+    ? `${window.location.origin}/track?ticket=${booking.ticketNumber}`
+    : `${window.location.origin}/verify/${booking.id}`;
 
   const ticketText = [
     `PYU-GO E-Ticket`,
@@ -56,7 +64,7 @@ export default function ETicket() {
   const handleShare = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: "ShuttleGo Ticket", text: ticketText });
+        await navigator.share({ title: "PYU-GO Ticket", text: ticketText });
       } catch { /* cancelled */ }
     } else {
       await navigator.clipboard.writeText(ticketText);
@@ -75,7 +83,7 @@ export default function ETicket() {
       const pdfW = pdf.internal.pageSize.getWidth() - 20;
       const pdfH = (canvas.height / canvas.width) * pdfW;
       pdf.addImage(imgData, "PNG", 10, 10, pdfW, pdfH);
-      pdf.save(`ShuttleGo-Ticket-${bookingRef}.pdf`);
+      pdf.save(`PYU-GO-Ticket-${bookingRef}.pdf`);
       toast.success("PDF downloaded!", { id: "pdf" });
     } catch {
       toast.error("Failed to generate PDF", { id: "pdf" });
@@ -119,7 +127,7 @@ export default function ETicket() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <Bus className="w-4 h-4 text-primary" />
-              <span className="text-sm font-bold text-foreground">ShuttleGo</span>
+              <span className="text-sm font-bold text-foreground italic uppercase tracking-tighter">PYU-GO</span>
             </div>
             <Badge className="bg-shuttle-success/15 text-shuttle-success border-0 rounded-lg font-semibold">Paid</Badge>
           </div>

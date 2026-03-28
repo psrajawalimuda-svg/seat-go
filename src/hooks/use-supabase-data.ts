@@ -28,6 +28,42 @@ export interface DbDriver {
   created_at: string;
 }
 
+export interface DbPricingConfig {
+  id: string;
+  service_category: string;
+  base_price: number;
+  price_per_km: number;
+  rounding_multiple: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export function usePricingConfigs() {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["pricing-configs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pricing_configs")
+        .select("*")
+        .eq("is_active", true)
+        .order("service_category");
+      if (error) throw error;
+      return data as DbPricingConfig[];
+    },
+  });
+
+  const upsert = useMutation({
+    mutationFn: async (config: Partial<DbPricingConfig> & { id?: string }) => {
+      const { error } = await supabase.from("pricing_configs").upsert(config as any);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pricing-configs"] }),
+  });
+
+  return { ...query, upsert };
+}
+
 export interface DbTrip {
   id: string;
   route_name: string;
@@ -40,10 +76,15 @@ export interface DbTrip {
   departure_date: string | null;
   estimated_completion: string | null;
   actual_completion: string | null;
+  rayon_id: string | null;
+  start_pickup_point_id: string | null;
+  budget: number | null;
+  description: string | null;
   created_at: string;
   // joined
   driver?: DbDriver | null;
 }
+
 
 export interface DbBooking {
   id: string;
@@ -70,6 +111,14 @@ export interface DbReview {
   created_at: string;
 }
 
+export interface DbRayon {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  created_at: string;
+}
+
 export interface DbPickupPoint {
   id: string;
   label: string;
@@ -82,6 +131,9 @@ export interface DbPickupPoint {
   minutes_from_start: number;
   lat: number;
   lng: number;
+  rayon_id: string | null;
+  capacity?: number;
+  deleted_at?: string | null;
 }
 
 // Helper to convert DbPickupPoint to the legacy PickupPoint shape used in components
@@ -97,6 +149,9 @@ export function toPickupPoint(p: DbPickupPoint) {
     order: p.order_index,
     minutesFromStart: p.minutes_from_start,
     coords: [p.lat, p.lng] as [number, number],
+    rayonId: p.rayon_id,
+    capacity: p.capacity || 0,
+    deletedAt: p.deleted_at
   };
 }
 
@@ -117,6 +172,10 @@ export function toTrip(t: DbTrip) {
     departureDate: t.departure_date,
     estimatedCompletion: t.estimated_completion,
     actualCompletion: t.actual_completion,
+    rayonId: t.rayon_id,
+    startPickupPointId: t.start_pickup_point_id,
+    budget: Number(t.budget) || 0,
+    description: t.description || "",
     createdAt: t.created_at,
   };
 }
@@ -140,18 +199,132 @@ export function toBooking(b: DbBooking, pickupPoints: any[]) {
 
 // ─── Hooks ───────────────────────────────────────────────────────────
 
+export function useRayons() {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["rayons"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase.from("rayons").select("*").order("name");
+        if (error) {
+          // If table doesn't exist (404), return empty array instead of crashing
+          if (error.code === 'PGRST116' || error.message.includes('not found') || error.code === '404') return [];
+          throw error;
+        }
+        return (data || []) as DbRayon[];
+      } catch (e) {
+        console.error("Rayons table might not be created yet:", e);
+        return [];
+      }
+    },
+    retry: false,
+  });
+
+  const upsert = useMutation({
+    mutationFn: async (rayon: Partial<DbRayon> & { id?: string }) => {
+      const { error } = await supabase.from("rayons").upsert(rayon as any);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["rayons"] }),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("rayons").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["rayons"] }),
+  });
+
+  return { ...query, upsert, remove };
+}
+
 export function usePickupPoints() {
-  return useQuery({
+  const qc = useQueryClient();
+  const query = useQuery({
     queryKey: ["pickup_points"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pickup_points")
-        .select("*")
-        .order("order_index");
-      if (error) throw error;
-      return (data as DbPickupPoint[]).map(toPickupPoint);
+      try {
+        const { data, error } = await supabase
+          .from("pickup_points")
+          .select("*")
+          .is("deleted_at", null) // Exclude soft-deleted items
+          .order("order_index");
+        
+        if (error) {
+          // If deleted_at column doesn't exist (400), try without the filter
+          if (error.code === 'PGRST204' || error.message.includes('deleted_at')) {
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from("pickup_points")
+              .select("*")
+              .order("order_index");
+            if (fallbackError) throw fallbackError;
+            return (fallbackData as DbPickupPoint[]).map(toPickupPoint);
+          }
+          throw error;
+        }
+        return (data as DbPickupPoint[]).map(toPickupPoint);
+      } catch (e) {
+        console.error("Error fetching pickup points:", e);
+        return [];
+      }
     },
   });
+
+  const upsert = useMutation({
+    mutationFn: async (point: Partial<DbPickupPoint> & { id?: string }) => {
+      // Ensure we don't send an empty string as ID for new items
+      const dataToSave = { ...point };
+      if (!dataToSave.id) {
+        delete dataToSave.id;
+      }
+
+      // Validate duplicate name within same Rayon
+      if (dataToSave.name && dataToSave.rayon_id) {
+        const { data: existing } = await supabase
+          .from("pickup_points")
+          .select("id")
+          .eq("name", dataToSave.name)
+          .eq("rayon_id", dataToSave.rayon_id)
+          .is("deleted_at", null)
+          .maybeSingle();
+
+        if (existing && existing.id !== dataToSave.id) {
+          throw new Error(`Nama pick-point "${dataToSave.name}" sudah digunakan di rayon ini.`);
+        }
+      }
+
+      const { error } = await supabase.from("pickup_points").upsert(dataToSave as any);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pickup_points"] }),
+  });
+
+  const softDelete = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("pickup_points")
+        .update({ deleted_at: new Date().toISOString() } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pickup_points"] }),
+  });
+
+  const batchUpsert = useMutation({
+    mutationFn: async (points: (Partial<DbPickupPoint> & { id?: string })[]) => {
+      const dataToSave = points.map(p => {
+        const item = { ...p };
+        if (!item.id) delete item.id;
+        return item;
+      });
+      const { error } = await supabase.from("pickup_points").upsert(dataToSave as any);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pickup_points"] }),
+  });
+
+  return { ...query, upsert, softDelete, batchUpsert };
 }
 
 export function useDrivers() {
@@ -194,10 +367,56 @@ export function useTrips() {
   });
 
   const upsert = useMutation({
-    mutationFn: async (trip: Partial<DbTrip> & { id?: string }) => {
-      const { driver, ...rest } = trip as any;
-      const { error } = await supabase.from("trips").upsert(rest);
-      if (error) throw error;
+    mutationFn: async (trip: Partial<DbTrip> & { id?: string; pricing_details?: any }) => {
+      const { driver, pricing_details, ...rest } = trip as any;
+      
+      // Validation: Budget must be positive
+      if (rest.budget !== undefined && rest.budget !== null && rest.budget < 0) {
+        throw new Error("Budget cannot be negative");
+      }
+
+      // Upsert trip first
+      const { data: tripData, error: tripError } = await supabase
+        .from("trips")
+        .upsert(rest)
+        .select()
+        .single();
+      
+      if (tripError) throw tripError;
+
+      const tripId = tripData.id;
+
+      // Upsert Pricing Details if provided
+      if (pricing_details) {
+        const pricingToSave = {
+          trip_id: tripId,
+          base_transport_cost: pricing_details.transportCost,
+          accommodation_cost: pricing_details.accommodationCost,
+          meal_cost: pricing_details.mealCost,
+          attraction_tickets_cost: pricing_details.attractionTicketsCost,
+          guide_fee: pricing_details.guideFee,
+          other_costs: pricing_details.otherCosts,
+          markup_amount: pricing_details.profitAmount,
+          tax_amount: pricing_details.taxAmount,
+          total_final_price: pricing_details.totalWithTax,
+          pax_count: pricing_details.paxCount
+        };
+
+        const { error: pricingError } = await supabase
+          .from("trip_pricing_details")
+          .upsert(pricingToSave as any, { onConflict: 'trip_id' });
+        
+        if (pricingError) console.error("Error saving pricing details:", pricingError);
+      }
+
+      // Audit Trail
+      if (rest.id) {
+        await supabase.from("pricing_audit_logs").insert({
+          trip_id: tripId,
+          new_data: rest,
+          change_reason: "Manual administrative update"
+        } as any);
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["trips"] }),
   });
@@ -212,16 +431,32 @@ export function useTrips() {
 
   const completeTrip = useMutation({
     mutationFn: async (tripId: string) => {
+      const completionTime = new Date().toISOString();
       const { error } = await supabase
         .from("trips")
-        .update({ actual_completion: new Date().toISOString() } as any)
+        .update({ actual_completion: completionTime } as any)
         .eq("id", tripId);
+      if (error) throw error;
+
+      // Audit Trail for completion
+      await supabase.from("pricing_audit_logs").insert({
+        trip_id: tripId,
+        change_reason: "Trip completed by driver",
+        new_data: { actual_completion: completionTime }
+      } as any);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trips"] }),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("trips").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["trips"] }),
   });
 
-  return { ...query, upsert, updateSeats, completeTrip };
+  return { ...query, upsert, updateSeats, completeTrip, remove };
 }
 
 export function useBookings() {
@@ -260,16 +495,36 @@ export function useReviews() {
   const query = useQuery({
     queryKey: ["reviews"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: reviewsData, error: reviewsError } = await supabase
         .from("reviews")
-        .select("*, trip:trips(*), driver:drivers(*)")
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(100);
-      if (error) throw error;
-      return (data as any[]).map((r) => ({
+      
+      if (reviewsError) throw reviewsError;
+      if (!reviewsData || reviewsData.length === 0) return [];
+
+      // Collect unique trip_ids and driver_ids
+      const tripIds = Array.from(new Set(reviewsData.map(r => r.trip_id).filter(Boolean)));
+      const driverIds = Array.from(new Set(reviewsData.map(r => r.driver_id).filter(Boolean)));
+
+      // Fetch related trips and drivers separately since relationships might be missing in DB
+      const [tripsRes, driversRes] = await Promise.all([
+        tripIds.length > 0 
+          ? supabase.from("trips").select("*").in("id", tripIds) 
+          : Promise.resolve({ data: [], error: null }),
+        driverIds.length > 0 
+          ? supabase.from("drivers").select("*").in("id", driverIds) 
+          : Promise.resolve({ data: [], error: null })
+      ]);
+
+      const tripsMap = Object.fromEntries((tripsRes.data || []).map(t => [t.id, t]));
+      const driversMap = Object.fromEntries((driversRes.data || []).map(d => [d.id, d]));
+
+      return reviewsData.map((r) => ({
         ...r,
-        trip: r.trip || null,
-        driver: r.driver || null,
+        trip: tripsMap[r.trip_id] || null,
+        driver: driversMap[r.driver_id] || null,
       })) as (DbReview & { trip: DbTrip; driver: DbDriver })[];
     },
   });
@@ -291,4 +546,56 @@ export function useReviews() {
   });
 
   return { ...query, insert, deleteReview };
+}
+
+export function useTicketValidation() {
+  const validate = async (ticketId: string) => {
+    const query = ticketId.trim().toUpperCase();
+    
+    // 1. Fetch Booking by ID or Ticket Number
+    const { data: booking, error: bookingError } = await supabase
+      .from("bookings")
+      .select("*, trip:trips(*, driver:drivers(*))")
+      .or(`id.eq.${query},ticket_number.eq.${query}`)
+      .maybeSingle();
+
+    if (bookingError) throw bookingError;
+    if (!booking) throw new Error("Tiket tidak ditemukan");
+
+    const trip = booking.trip;
+    if (!trip) throw new Error("Data perjalanan tidak ditemukan");
+
+    // 2. Fetch current driver location for validation
+    const { data: location, error: locError } = await supabase
+      .from("driver_locations")
+      .select("*")
+      .eq("trip_id", trip.id)
+      .maybeSingle();
+
+    if (locError) throw locError;
+
+    // 3. Validate assignment
+    const isAssignmentValid = trip.driver_id && location ? location.driver_id === trip.driver_id : true;
+
+    // 4. Log Audit Trail
+    await supabase.from("pricing_audit_logs").insert({
+      trip_id: trip.id,
+      change_reason: `Ticket validation request: ${query}`,
+      new_data: { 
+        ticket_id: booking.id, 
+        is_valid: isAssignmentValid,
+        expected_driver: trip.driver_id,
+        actual_driver: location?.driver_id
+      }
+    } as any);
+
+    return {
+      booking,
+      trip,
+      location,
+      isAssignmentValid
+    };
+  };
+
+  return { validate };
 }
