@@ -24,7 +24,6 @@ export type Database = {
           pickup_point_id: string
           seat_number: number
           status: string
-          ticket_number: string | null
           total_price: number
           trip_id: string
         }
@@ -37,7 +36,6 @@ export type Database = {
           pickup_point_id: string
           seat_number: number
           status?: string
-          ticket_number?: string | null
           total_price?: number
           trip_id: string
         }
@@ -50,7 +48,6 @@ export type Database = {
           pickup_point_id?: string
           seat_number?: number
           status?: string
-          ticket_number?: string | null
           total_price?: number
           trip_id?: string
         }
@@ -196,7 +193,7 @@ export type Database = {
           address?: string | null
           capacity?: number | null
           deleted_at?: string | null
-          id: string
+          id?: string
           is_active?: boolean | null
           label: string
           lat: number
@@ -234,27 +231,74 @@ export type Database = {
           },
         ]
       }
-      rayons: {
+      pricing_audit_logs: {
         Row: {
-          color: string | null
-          created_at: string
-          description: string | null
+          change_reason: string | null
+          changed_by: string | null
+          created_at: string | null
           id: string
-          name: string
+          new_data: Json | null
+          old_data: Json | null
+          trip_id: string
         }
         Insert: {
-          color?: string | null
-          created_at?: string
-          description?: string | null
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string | null
           id?: string
-          name: string
+          new_data?: Json | null
+          old_data?: Json | null
+          trip_id: string
         }
         Update: {
-          color?: string | null
-          created_at?: string
-          description?: string | null
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string | null
           id?: string
-          name?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_audit_logs_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pricing_configs: {
+        Row: {
+          base_price: number
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          price_per_km: number
+          rounding_multiple: number | null
+          service_category: string
+          updated_at: string | null
+        }
+        Insert: {
+          base_price?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          price_per_km?: number
+          rounding_multiple?: number | null
+          service_category: string
+          updated_at?: string | null
+        }
+        Update: {
+          base_price?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          price_per_km?: number
+          rounding_multiple?: number | null
+          service_category?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -279,6 +323,30 @@ export type Database = {
           id?: string
           phone?: string | null
           role?: string
+        }
+        Relationships: []
+      }
+      rayons: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -317,6 +385,71 @@ export type Database = {
           trip_id?: string
         }
         Relationships: []
+      }
+      trip_pricing_details: {
+        Row: {
+          accommodation_cost: number | null
+          attraction_tickets_cost: number | null
+          created_at: string | null
+          final_price_per_pax: number | null
+          guide_fee: number | null
+          id: string
+          is_margin_valid: boolean | null
+          markup_percentage: number | null
+          meal_cost: number | null
+          min_margin_percentage: number | null
+          other_costs: number | null
+          tax_percentage: number | null
+          total_cost: number | null
+          transport_cost: number | null
+          trip_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          accommodation_cost?: number | null
+          attraction_tickets_cost?: number | null
+          created_at?: string | null
+          final_price_per_pax?: number | null
+          guide_fee?: number | null
+          id?: string
+          is_margin_valid?: boolean | null
+          markup_percentage?: number | null
+          meal_cost?: number | null
+          min_margin_percentage?: number | null
+          other_costs?: number | null
+          tax_percentage?: number | null
+          total_cost?: number | null
+          transport_cost?: number | null
+          trip_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          accommodation_cost?: number | null
+          attraction_tickets_cost?: number | null
+          created_at?: string | null
+          final_price_per_pax?: number | null
+          guide_fee?: number | null
+          id?: string
+          is_margin_valid?: boolean | null
+          markup_percentage?: number | null
+          meal_cost?: number | null
+          min_margin_percentage?: number | null
+          other_costs?: number | null
+          tax_percentage?: number | null
+          total_cost?: number | null
+          transport_cost?: number | null
+          trip_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_pricing_details_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trips: {
         Row: {
@@ -393,130 +526,6 @@ export type Database = {
             columns: ["start_pickup_point_id"]
             isOneToOne: false
             referencedRelation: "pickup_points"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pricing_audit_logs: {
-        Row: {
-          change_reason: string | null
-          created_at: string
-          id: string
-          new_data: Json | null
-          old_data: Json | null
-          trip_id: string | null
-          user_id: string | null
-        }
-        Insert: {
-          change_reason?: string | null
-          created_at?: string
-          id?: string
-          new_data?: Json | null
-          old_data?: Json | null
-          trip_id?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          change_reason?: string | null
-          created_at?: string
-          id?: string
-          new_data?: Json | null
-          old_data?: Json | null
-          trip_id?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pricing_audit_logs_trip_id_fkey"
-            columns: ["trip_id"]
-            isOneToOne: false
-            referencedRelation: "trips"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pricing_configs: {
-        Row: {
-          base_price: number
-          created_at: string
-          id: string
-          is_active: boolean | null
-          price_per_km: number
-          rounding_multiple: number | null
-          service_category: string
-        }
-        Insert: {
-          base_price: number
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          price_per_km: number
-          rounding_multiple?: number | null
-          service_category: string
-        }
-        Update: {
-          base_price?: number
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          price_per_km?: number
-          rounding_multiple?: number | null
-          service_category?: string
-        }
-        Relationships: []
-      }
-      trip_pricing_details: {
-        Row: {
-          accommodation_cost: number | null
-          attraction_tickets_cost: number | null
-          base_transport_cost: number | null
-          created_at: string
-          guide_fee: number | null
-          id: string
-          markup_amount: number | null
-          meal_cost: number | null
-          other_costs: number | null
-          pax_count: number | null
-          tax_amount: number | null
-          total_final_price: number | null
-          trip_id: string | null
-        }
-        Insert: {
-          accommodation_cost?: number | null
-          attraction_tickets_cost?: number | null
-          base_transport_cost?: number | null
-          created_at?: string
-          guide_fee?: number | null
-          id?: string
-          markup_amount?: number | null
-          meal_cost?: number | null
-          other_costs?: number | null
-          pax_count?: number | null
-          tax_amount?: number | null
-          total_final_price?: number | null
-          trip_id?: string | null
-        }
-        Update: {
-          accommodation_cost?: number | null
-          attraction_tickets_cost?: number | null
-          base_transport_cost?: number | null
-          created_at?: string
-          guide_fee?: number | null
-          id?: string
-          markup_amount?: number | null
-          meal_cost?: number | null
-          other_costs?: number | null
-          pax_count?: number | null
-          tax_amount?: number | null
-          total_final_price?: number | null
-          trip_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "trip_pricing_details_trip_id_fkey"
-            columns: ["trip_id"]
-            isOneToOne: true
-            referencedRelation: "trips"
             referencedColumns: ["id"]
           },
         ]
