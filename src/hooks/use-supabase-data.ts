@@ -269,6 +269,8 @@ export function usePickupPoints() {
         return [];
       }
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes — pickup points rarely change
+    gcTime: 10 * 60 * 1000,   // keep in cache 10 minutes
   });
 
   const upsert = useMutation({
