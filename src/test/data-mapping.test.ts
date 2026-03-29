@@ -29,6 +29,10 @@ describe("use-supabase-data mapping functions", () => {
       estimated_completion: "2026-03-27T11:00:00Z",
       actual_completion: null,
       created_at: "2026-03-26T00:00:00Z",
+      rayon_id: null,
+      start_pickup_point_id: null,
+      budget: null,
+      description: null,
       driver: mockDriver
     };
 
@@ -56,6 +60,10 @@ describe("use-supabase-data mapping functions", () => {
       estimated_completion: null,
       actual_completion: null,
       created_at: "2026-03-26T00:00:00Z",
+      rayon_id: null,
+      start_pickup_point_id: null,
+      budget: null,
+      description: null,
       driver: null
     };
 
