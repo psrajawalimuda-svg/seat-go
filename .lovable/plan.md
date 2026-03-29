@@ -1,36 +1,26 @@
 
 
-# Fix: Driver Tidak Muncul di Map Saat Online
+# Fix Build Errors
 
-## Root Causes Found
+## 6 errors to fix across 4 files
 
-1. **Map hanya menampilkan driver dari tab aktif** — Default tab "all" hanya menampilkan driver `approved`. Driver dengan status `pending` tidak muncul di map.
-2. **GPS coordinates null** — `DriverMarker` component me-return `null` jika `latitude` atau `longitude` kosong. Driver baru yang belum pernah update lokasi tidak akan tampil.
-3. **Geolocation gagal di non-HTTPS** — Preview environment bukan HTTPS sehingga GPS browser diblokir. Fallback simulasi berjalan tapi posisi mungkin di luar area yang terlihat di map.
-4. **Tidak ada indikator visual** — Ketika driver online tapi GPS gagal, tidak ada feedback bahwa lokasi belum tersedia.
+### 1. `src/pages/admin/TripsManagement.tsx`
+- **Line 35**: Remove `import { getServiceScale } from "@/lib/pricing"` — function doesn't exist
+- **Lines 201-216 (`openAdd`)**: Add 8 missing pricing fields: `accommodation_cost: "0"`, `meal_cost: "0"`, `attraction_tickets_cost: "0"`, `guide_fee: "0"`, `other_costs: "0"`, `markup_percentage: "15"`, `tax_percentage: "11"`, `min_margin_percentage: "10"`
+- **Lines 222-237 (`openEdit`)**: Add same 8 pricing fields (using `String(t.xxx || "0")` pattern for edit)
 
-## Changes
+### 2. `src/pages/DriverTracking.tsx`
+- **Line 70-77**: Add `driver_id?: string` to `DriverLocation` interface
 
-### 1. Map view menampilkan SEMUA driver approved (bukan filtered by tab)
-**File:** `src/pages/admin/DriversManagement.tsx`
-- Ubah prop `drivers` pada `DriversMapView` dari `displayDrivers` menjadi `approvedDrivers` agar map selalu menampilkan semua driver aktif, terlepas dari tab/filter yang dipilih.
+### 3. `src/test/data-mapping.test.ts`
+- **Lines 19 & 46**: Add missing properties to both `DbTrip` mocks: `rayon_id: null`, `start_pickup_point_id: null`, `budget: null`, `description: null`
 
-### 2. Handle driver tanpa koordinat GPS di map
-**File:** `src/components/admin/DriversMapView.tsx`
-- Tampilkan driver tanpa GPS di fleet list sidebar dengan badge "GPS OFF" (sudah ada)
-- Tambahkan counter di map overlay: "X drivers tanpa GPS"
+### 4. `supabase/functions/.keep`
+- Create empty file to satisfy directory check
 
-### 3. Perbaiki fallback lokasi saat GPS gagal
-**File:** `src/context/DriverContext.tsx`
-- Pastikan simulasi lokasi langsung update database saat pertama kali (tidak menunggu throttle)
-- Tambahkan toast notification ke driver bahwa GPS tidak tersedia dan menggunakan lokasi simulasi
-
-### 4. Auto-fit map ke posisi semua driver
-**File:** `src/components/admin/DriversMapView.tsx`
-- Saat map pertama kali load, auto-fit bounds ke semua driver yang memiliki koordinat, bukan hardcode ke Jakarta
-
-## Technical Details
-- Tidak ada perubahan database
-- Perubahan hanya di 3 file front-end
-- Realtime sudah aktif di tabel `drivers` — perubahan lokasi sudah ter-broadcast
+## Files
+- `src/pages/admin/TripsManagement.tsx`
+- `src/pages/DriverTracking.tsx`
+- `src/test/data-mapping.test.ts`
+- `supabase/functions/.keep`
 
