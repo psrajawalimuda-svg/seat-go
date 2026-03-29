@@ -32,7 +32,7 @@ import { Calendar as DayPickerCalendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 
 import { Textarea } from "@/components/ui/textarea";
-import { getServiceScale } from "@/lib/pricing";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -212,7 +212,15 @@ export default function TripsManagement() {
       budget: "",
       description: "",
       distance_km: "0",
-      service_category: "Regular"
+      service_category: "Regular",
+      accommodation_cost: "0",
+      meal_cost: "0",
+      attraction_tickets_cost: "0",
+      guide_fee: "0",
+      other_costs: "0",
+      markup_percentage: "15",
+      tax_percentage: "11",
+      min_margin_percentage: "10"
     });
     setDialogOpen(true);
   };
@@ -232,8 +240,16 @@ export default function TripsManagement() {
       start_pickup_point_id: t.start_pickup_point_id || "",
       budget: String(t.budget || ""),
       description: t.description || "",
-      distance_km: "0", // Default or could be stored in DB if column exists
-      service_category: "Regular"
+      distance_km: "0",
+      service_category: "Regular",
+      accommodation_cost: String((t as any).accommodation_cost || "0"),
+      meal_cost: String((t as any).meal_cost || "0"),
+      attraction_tickets_cost: String((t as any).attraction_tickets_cost || "0"),
+      guide_fee: String((t as any).guide_fee || "0"),
+      other_costs: String((t as any).other_costs || "0"),
+      markup_percentage: String((t as any).markup_percentage || "15"),
+      tax_percentage: String((t as any).tax_percentage || "11"),
+      min_margin_percentage: String((t as any).min_margin_percentage || "10")
     });
     setDialogOpen(true);
   };

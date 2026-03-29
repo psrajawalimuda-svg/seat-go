@@ -74,7 +74,7 @@ export default function TrackTicket() {
         totalPrice: booking.total_price,
         status: booking.status as any,
         bookedAt: booking.booked_at,
-        ticketNumber: booking.ticket_number || undefined
+        ticketNumber: (booking as any).ticket_number || undefined
       });
 
       toast.success("Tiket valid! Menghubungkan ke GPS Driver...");

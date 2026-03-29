@@ -74,6 +74,7 @@ interface DriverLocation {
   speed: number; 
   current_stop_index: number; 
   updated_at: string;
+  driver_id?: string;
 }
 
 export default function DriverTracking() {
